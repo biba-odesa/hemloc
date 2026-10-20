@@ -1,0 +1,2 @@
+# Unified patches contain a context marker before upstream Go indentation.
+deploy/patches/*.patch whitespace=-blank-at-eol,-space-before-tab

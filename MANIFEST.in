@@ -1,0 +1,7 @@
+include README.md AGENTS.md THIRD_PARTY.md requirements*.lock
+recursive-include docs *.md
+recursive-include deploy *.ini *.toml *.service *.patch
+recursive-include tools *.py
+recursive-include tests *.py
+global-exclude *.py[cod]
+include deploy/patches/LICENSE.GoBGP

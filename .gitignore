@@ -1,0 +1,33 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.sqlite*
+*.db*
+*.backup*
+*.pem
+*.key
+*.crt
+*.csr
+*.srl
+*.token
+*.log
+*.owner.lock
+.coverage
+htmlcov/
+.ruff_cache/
+.env
+hemloc.ini
+var/
+build/
+dist/
+*.egg-info/
+
+# Local operator session transcripts are not project assets.
+codex-session-*.md
+
+# Publication and build artifacts must never enter ordinary Git.
+*.bundle
+*.whl
+*.tar.gz
+release-artifacts/

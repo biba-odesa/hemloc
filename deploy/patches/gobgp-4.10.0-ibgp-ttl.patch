@@ -1,0 +1,34 @@
+--- a/pkg/server/fsm.go
++++ b/pkg/server/fsm.go
+@@ -955,11 +955,11 @@
+ 		if conf.TtlSecurity.Config.Enabled {
+ 			ttl = 255
+ 			ttlMin = conf.TtlSecurity.Config.TtlMin
++		} else if conf.EbgpMultihop.Config.Enabled {
++			// Honor an explicitly configured outgoing TTL for internal peers too.
++			ttl = conf.EbgpMultihop.Config.MultihopTtl
+ 		} else if conf.Config.PeerAs != 0 && conf.Config.PeerType == oc.PEER_TYPE_EXTERNAL {
+ 			ttl = 1
+-			if conf.EbgpMultihop.Config.Enabled {
+-				ttl = conf.EbgpMultihop.Config.MultihopTtl
+-			}
+ 		}
+ 		return tick, addr, port, password, ttl, ttlMin, conf.Transport.Config.TcpMss, conf.Transport.Config.LocalAddress.String(), int(conf.Transport.Config.LocalPort), conf.Transport.Config.BindInterface, tos
+ 	}()
+@@ -1106,12 +1106,11 @@
+ 	if conf.TtlSecurity.Config.Enabled {
+ 		ttl = 255
+ 		ttlMin = int(conf.TtlSecurity.Config.TtlMin)
++	} else if conf.EbgpMultihop.Config.Enabled {
++		// Keep the configured TTL when a connected internal socket is adopted.
++		ttl = int(conf.EbgpMultihop.Config.MultihopTtl)
+ 	} else if conf.Config.PeerAs != 0 && conf.Config.PeerType == oc.PEER_TYPE_EXTERNAL {
+-		if conf.EbgpMultihop.Config.Enabled {
+-			ttl = int(conf.EbgpMultihop.Config.MultihopTtl)
+-		} else {
+-			ttl = 1
+-		}
++		ttl = 1
+ 	}
+ 
+ 	if ttl != 0 {

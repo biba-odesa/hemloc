@@ -1,0 +1,6 @@
+# Isolated integration configuration. No production neighbors are configured.
+[global.config]
+  as = 64512
+  router-id = "127.0.0.1"
+  port = 1179
+  local-address-list = ["127.0.0.1"]
