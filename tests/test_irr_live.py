@@ -12,7 +12,7 @@ from hemloc.irr import IRR, IRRError
 
 @unittest.skipUnless(shutil.which('bgpq4'),'bgpq4 is not installed')
 class IRRLiveTests(unittest.TestCase):
-    def expand(self, empty=False, malformed=False):
+    def expand(self, empty=False, malformed=False, empty_families=(), diagnostic=False):
         queries=[]
         class Handler(socketserver.StreamRequestHandler):
             def handle(self):
@@ -25,7 +25,8 @@ class IRRLiveTests(unittest.TestCase):
                     if query=='!q':
                         break
                     if query.startswith(('!g','!6')):
-                        if empty:
+                        family = 6 if query.startswith('!6') else 4
+                        if empty or family in empty_families:
                             self.wfile.write(b'C\n')
                         else:
                             data=b'not-a-prefix\n' if malformed else (b'2001:db8::/32\n' if query.startswith('!6') else b'192.0.2.0/24 198.51.100.0/24\n')
@@ -38,7 +39,11 @@ class IRRLiveTests(unittest.TestCase):
             thread.start()
             try:
                 config=replace(Config(),irr_server=f'127.0.0.1:{server.server_address[1]}',irr_sources='RADB',timeout=3)
-                result=IRR(config).expand(64500)
+                if diagnostic:
+                    from tools.diagnose_irr import probe
+                    result = probe(config,64500)
+                else:
+                    result=IRR(config).expand(64500)
             finally:
                 server.shutdown()
                 thread.join()
@@ -54,6 +59,21 @@ class IRRLiveTests(unittest.TestCase):
         self.assertEqual(self.expand(empty=True)[0],[])
         with self.assertRaises(IRRError):
             self.expand(malformed=True)
+
+    def test_real_one_empty_family_remains_successful(self):
+        self.assertEqual(self.expand(empty_families=(6,))[0], ['192.0.2.0/24','198.51.100.0/24'])
+        self.assertEqual(self.expand(empty_families=(4,))[0], ['2001:db8::/32'])
+
+    def test_read_only_diagnostic_invokes_real_bounded_resolver(self):
+        result,_ = self.expand(empty_families=(6,),diagnostic=True)
+        self.assertTrue(result['ok'])
+        self.assertEqual(result['prefix_count'],2)
+        self.assertEqual([event['exit_code'] for event in result['families']],[0,0])
+        # bgpq4 1.12 emits a harmless newline for an empty custom-format set.
+        self.assertLessEqual(result['families'][1]['stdout_bytes'],1)
+        result,_ = self.expand(malformed=True,diagnostic=True)
+        self.assertFalse(result['ok'])
+        self.assertNotIn('not-a-prefix',str(result))
 
 
 if __name__ == '__main__':

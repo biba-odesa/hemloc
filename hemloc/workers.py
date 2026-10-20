@@ -3,14 +3,17 @@
 import asyncio
 from contextlib import contextmanager
 import fcntl
+import logging
 import os
 from pathlib import Path
 import time
 
 from .domain import Conflict
-from .irr import IRR, Metadata
+from .irr import IRR, Metadata, failure_details
 from .service import SYSTEM
 from .store import digest
+
+PROTECTION_LOG = logging.getLogger('uvicorn.error.protection')
 
 
 @contextmanager
@@ -72,11 +75,23 @@ class ProtectionWorker:
         for number in self.service.config.protected_asns:
             if state.get(str(number), {}).get('next', 0) > time.time():
                 continue
+            prefixes = None
             try:
-                self.service.grow_protection(number, self.irr.expand(number))
+                prefixes = self.irr.expand(number)
+                self.service.grow_protection(number, prefixes)
                 state[str(number)] = {'next': time.time() + 30*86400, 'error': ''}
-            except Exception:
-                state[str(number)] = {'next': time.time() + 3600, 'error': 'Protected IRR lookup failed; cache retained'}
+                PROTECTION_LOG.info('Protection refresh succeeded asn=%d prefixes=%d', number, len(prefixes))
+            except Exception as exc:
+                detail = failure_details(exc)
+                if prefixes == []:
+                    detail['category'] = 'empty'
+                state[str(number)] = {'next': time.time() + 3600,
+                                      'error': 'Protected IRR lookup failed; cache retained',
+                                      'diagnostic': detail}
+                PROTECTION_LOG.warning(
+                    'Protection refresh failed asn=%d family=%s type=%s exit_code=%s timeout=%s errno=%s detail=%s; cache retained; retry_seconds=3600',
+                    number, detail['family'] or 'combined', detail['category'], detail['exit_code'],
+                    detail['timed_out'], detail['os_errno'], detail['detail'])
             self.service.store.set_local('protection_schedule', state)
 
 

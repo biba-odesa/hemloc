@@ -185,3 +185,32 @@ live-daemon test skipped; isolated documentation/protection/configuration checks
 passed. All reachable history and metadata passed artifact, operational-pattern,
 private-value and migration-data comparisons without reporting matched values.
 No booted second VM, production-router acceptance or runtime update is claimed.
+
+## Protection IRR diagnostics follow-up
+
+Original v0.1.0 resolver/worker/unit sources were checked. A regression reproduces
+the absence of protection failure logs in that tag. The source change preserves
+safe family/exit/timeout/errno/error-category context and emits bounded journal
+messages without raw subprocess text, credentials or tracebacks. Schedule/cache
+semantics stay unchanged: one-hour persisted retry, 30-day success, monotonic cache
+and error clearing only after successful refresh. Empty single-family responses
+are tested with real bgpq4/loopback IRRD and accepted with a nonempty other family.
+
+A standalone read-only diagnostic helper works with the original installed
+resolver; site-specific copyable stdin commands/results stay in ignored var/.
+It reports actual process status, selected unit properties and read-only retry
+metadata. It does not enter the service sandbox or claim to reproduce a remote
+host's failure. No second-host access, working DB/cache writes, service restart,
+GoBGP/rule/config change or deployment is performed in this follow-up.
+See IRR_DIAGNOSTICS.md for interpretation and verification limits.
+
+Verification: 101 tests discovered, 100 passed, one opt-in GoBGP test skipped.
+The no-log regression fails on an isolated export of v0.1.0 and passes after the
+change. The probe works with unmodified v0.1.0 modules and real bgpq4 against a
+loopback IRRD; a read-only invocation against the existing local installation
+also succeeds. That local result does not establish the affected node's cause.
+
+Next: operator runs the prepared probe on the affected node and reports its
+redacted result. Determine the node-specific cause from that evidence. Deploy
+the diagnostic logging only in a separately authorized update; do not clear
+protection or its recorded error to manufacture success.

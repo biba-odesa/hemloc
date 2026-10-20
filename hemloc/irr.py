@@ -15,7 +15,57 @@ from .domain import Invalid, asn, prefix
 
 
 class IRRError(RuntimeError):
-    pass
+    def __init__(self, message, *, category='resolver', exit_code=None, timed_out=False,
+                 family=None, number=None, os_errno=None, detail=None):
+        super().__init__(message)
+        self.category = category
+        self.exit_code = exit_code
+        self.timed_out = timed_out
+        self.family = family
+        self.number = number
+        self.os_errno = os_errno
+        self.detail = detail
+
+
+def stderr_category(data):
+    """Return a fixed label, never subprocess text or credentials."""
+    lowered = data.lower()
+    for pattern, label in (
+        (b'permission denied', 'permission_denied'),
+        (b'operation not permitted', 'operation_not_permitted'),
+        (b'connection refused', 'connection_refused'),
+        (b'connection timed out', 'connection_timeout'),
+        (b'network is unreachable', 'network_unreachable'),
+        (b'no route to host', 'no_route'),
+        (b'name or service not known', 'dns_failure'),
+        (b'temporary failure in name resolution', 'dns_failure'),
+        (b'invalid option', 'invalid_option'),
+        (b'unrecognized option', 'invalid_option'),
+    ):
+        if pattern in lowered:
+            return label
+    return None
+
+
+def failure_details(error):
+    """Bounded, allowlisted diagnostic fields suitable for journals and JSON."""
+    categories = {'resolver', 'timeout', 'output_limit', 'exit', 'utility_error',
+                  'os_error', 'invalid_output', 'family_mismatch', 'empty', 'internal'}
+    result = {'category': 'internal', 'family': None, 'exit_code': None,
+              'timed_out': False, 'os_errno': None, 'detail': None}
+    if isinstance(error, IRRError):
+        result.update(category=error.category if error.category in categories else 'resolver',
+                      family=error.family if error.family in (4, 6) else None,
+                      exit_code=error.exit_code if type(error.exit_code) is int else None,
+                      timed_out=error.timed_out is True,
+                      os_errno=error.os_errno if type(error.os_errno) is int else None)
+        if error.detail in {'permission_denied', 'operation_not_permitted', 'connection_refused',
+                            'connection_timeout', 'network_unreachable', 'no_route',
+                            'dns_failure', 'invalid_option'}:
+            result['detail'] = error.detail
+    elif isinstance(error, OSError):
+        result.update(category='os_error', os_errno=error.errno)
+    return result
 
 
 def bounded_process(args, timeout, max_bytes=32 * 1024 * 1024):
@@ -30,10 +80,10 @@ def bounded_process(args, timeout, max_bytes=32 * 1024 * 1024):
             while selector.get_map():
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise IRRError("IRR timeout")
+                    raise IRRError("IRR timeout", category='timeout', timed_out=True)
                 ready = selector.select(remaining)
                 if not ready:
-                    raise IRRError("IRR timeout")
+                    raise IRRError("IRR timeout", category='timeout', timed_out=True)
                 for key, _ in ready:
                     chunk = os.read(key.fd, 65536)
                     if not chunk:
@@ -42,11 +92,17 @@ def bounded_process(args, timeout, max_bytes=32 * 1024 * 1024):
                     target = data if key.fileobj is process.stdout else errors
                     target.extend(chunk)
                     if len(data) + len(errors) > max_bytes or len(errors) > 65536:
-                        raise IRRError("IRR output limit exceeded")
-            if process.wait(timeout=max(0.01, deadline - time.monotonic())) != 0:
-                raise IRRError("IRR utility failed")
+                        raise IRRError("IRR output limit exceeded", category='output_limit')
+            try:
+                code = process.wait(timeout=max(0.01, deadline - time.monotonic()))
+            except subprocess.TimeoutExpired as exc:
+                raise IRRError('IRR timeout', category='timeout', timed_out=True) from exc
+            if code != 0:
+                raise IRRError("IRR utility failed", category='exit', exit_code=code,
+                               detail=stderr_category(errors))
             if b'ERROR:' in errors.upper() or b'FATAL:' in errors.upper():
-                raise IRRError('IRR utility reported an error')
+                raise IRRError('IRR utility reported an error', category='utility_error',
+                               exit_code=code, detail=stderr_category(errors))
             return bytes(data)
         except BaseException:
             process.kill()
@@ -63,8 +119,8 @@ class IRR:
     def expand(self, number):
         number = asn(number)
         result = set()
-        try:
-            for version in (4, 6):
+        for version in (4, 6):
+            try:
                 args = [self.config.irr_command, '-p', f"-{version}", "-F", "%n/%l\n",
                         "-h", self.config.irr_server, "-S", self.config.irr_sources, f"AS{number}"]
                 output = self.runner(args, self.config.timeout).decode("ascii", errors="strict")
@@ -73,11 +129,21 @@ class IRR:
                         continue
                     candidate = prefix(line)
                     if ipaddress.ip_network(candidate).version != version:
-                        raise IRRError("Unexpected IRR address family")
+                        raise IRRError("Unexpected IRR address family", category='family_mismatch')
                     result.add(candidate)
-            return sorted(result)
-        except (OSError, ValueError, UnicodeError, subprocess.SubprocessError) as exc:
-            raise IRRError("IRR response unavailable or invalid") from exc
+            except IRRError as exc:
+                exc.family, exc.number = version, number
+                raise
+            except subprocess.TimeoutExpired as exc:
+                raise IRRError('IRR timeout', category='timeout', timed_out=True,
+                               family=version, number=number) from exc
+            except OSError as exc:
+                raise IRRError('IRR process unavailable', category='os_error', os_errno=exc.errno,
+                               family=version, number=number) from exc
+            except (ValueError, subprocess.SubprocessError) as exc:
+                raise IRRError("IRR response unavailable or invalid", category='invalid_output',
+                               family=version, number=number) from exc
+        return sorted(result)
 
 
 class Metadata:
