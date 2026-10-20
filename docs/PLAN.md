@@ -167,3 +167,21 @@ GoBGP dry-run and single-peer edits. No working certificates were issued here.
   for proxy/network prerequisites, ownership/permissions, CSR/certificate checks,
   protection readiness and replication. Keep service/BGP activation as explicit
   operator gates; do not expose secrets in arguments or reports.
+
+
+## Documentation publication checkpoint
+
+Only public installation documentation and planning notes changed after v0.1.0;
+the application source, dependency locks and deployed runtime are unchanged.
+The local operational checkpoint is retained only in ignored private records,
+not in outgoing public documentation. Current follow-up checks cover documentation
+syntax/links, temporary protection/configuration scenarios and full-history
+artifact/secret/site-pattern review. Private deployment instructions, runtime
+data and migration lists remain excluded. Publish main only; retain the existing
+v0.1.0 tag target. Production service changes are outside this publication.
+
+Publication verification passed: 93 tests discovered, 92 passed and one opt-in
+live-daemon test skipped; isolated documentation/protection/configuration checks
+passed. All reachable history and metadata passed artifact, operational-pattern,
+private-value and migration-data comparisons without reporting matched values.
+No booted second VM, production-router acceptance or runtime update is claimed.
