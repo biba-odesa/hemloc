@@ -11,8 +11,11 @@ A — действующий master; B — новый slave. Рабочую БД
 Публичная инструкция не содержит конфигурации какого-либо провайдера.
 Команды A выполнять только в отдельно согласованное окно; при подготовке этой
 инструкции A не изменялся. SSH, firewall, маршруты и адреса VM автоматически
-не меняются. Начальная установка B заканчивается **announcements=no** и тремя
-административно выключенными BGP-соседями. Приём маршрутов роутерами — другой этап.
+не меняются. Безопасный bootstrap выполняется с **announcements=no** и тремя
+административно выключенными соседями. После проверок оператор может выбрать
+announcements=yes на B при сохранённых import/export DENY-ANY на роутерах (§10).
+Инструкция не меняет уже выбранный режим автоматически. Приём маршрутов
+роутерами и реальное применение блокировок — отдельное решение.
 
 ## 0. План и переменные
 
@@ -122,7 +125,17 @@ git --version
 | B → инфраструктура DNS/времени | действующие DNS/NTP, согласно политике сети |
 
 Slave не раскрывает заблокированные ASN вместо A, но собственный
-ProtectionWorker обращается в IRR на обоих узлах. BGP listener будет выключен
+ProtectionWorker обращается в IRR на обоих узлах.
+
+**HTTP_PROXY/HTTPS_PROXY не обеспечивают транспорт для bgpq4.** Приложение
+удаляет proxy env при его запуске; IRR нужен прямой TCP/43 либо отдельно
+спроектированный и проверенный транспорт. Встроенного WHOIS-over-HTTP proxy нет.
+Slave получает готовые **blocked ASN** наборы от master, но **protection refresh**
+текущий код выполняет самостоятельно на каждом узле. При ошибке IRR сохранённый
+protection cache остаётся, защита не уменьшается; ошибка должна быть видна.
+После повышения slave до master доступ к IRR понадобится также для добавления
+и обновления заблокированных ASN. Успех pip/curl через proxy этого не проверяет.
+ BGP listener будет выключен
 (`port=-1`), CAP_NET_BIND_SERVICE не требуется. Ни один порт инструкция сама
 в firewall не открывает.
 
@@ -268,7 +281,8 @@ router-id/local-address B; local/peer ASN согласованы; `port=-1`;
 
 Использовать доверенный A CA, проверить его fingerprint по независимому каналу.
 Не генерировать новый CA под тем же именем: одинаковый CN не означает доверие.
-CA private key остаётся на узле подписи/у владельца CA и **никогда** не идёт на B.
+В этой двухузловой схеме сертификат B подписывается **на A**, где хранится
+приватный ключ CA. CA key остаётся на A и **никогда** не идёт на B.
 
 **B/root:**
 
@@ -281,7 +295,7 @@ chown root:hemloc /etc/hemloc/tls/hemloc-b.key
 chmod 0640 /etc/hemloc/tls/hemloc-b.key
 ```
 
-**Рабочая станция:** с проверенными SSH host keys передать CSR с B владельцу CA
+**Рабочая станция:** с проверенными SSH host keys передать CSR с B на A
 (через login с sudo или согласованный SFTP staging, не root SSH по умолчанию).
 CSR публичный. Ни ключ B, ни CA key не передавать. Пример команд **рабочей
 станции**, после задания A_SSH/B_SSH (существующие login@host, не root):
@@ -289,17 +303,26 @@ CSR публичный. Ни ключ B, ни CA key не передавать. 
 ```bash
 umask 077
 export A_SSH='<EXISTING_SSH_LOGIN_AT_MASTER>' B_SSH='<EXISTING_SSH_LOGIN_AT_SLAVE>'
-ssh -T "$B_SSH" 'sudo -n cat /root/hemloc-transfer/hemloc-b.csr' > hemloc-b.csr.transfer
-scp hemloc-b.csr.transfer "$A_SSH:hemloc-b.csr.transfer"
+ssh -T "$B_SSH" 'sudo -n cat /root/hemloc-transfer/hemloc-b.csr' > hemloc-b.csr.transfer && \
+  test -s hemloc-b.csr.transfer && \
+  openssl req -in hemloc-b.csr.transfer -noout -verify && \
+  scp hemloc-b.csr.transfer "$A_SSH:hemloc-b.csr.transfer"
 ```
 
-**A/root:** `install -d -m 0700 /root/hemloc-transfer`, затем
-`install -o root -g root -m 0600 /home/<A_OPERATOR_LOGIN>/hemloc-b.csr.transfer
-/root/hemloc-transfer/hemloc-b.csr`. При ошибке SSH/sudo остановиться.
-Для файлов root-owned нужно
-сначала staging оператора, затем `sudo install` на соответствующем узле.
+**A/root:** принять CSR в закрытый каталог и проверить именно принятую копию:
 
-**Узел подписи/root**, переменные отдельно задать здесь:
+```bash
+install -d -m 0700 /root/hemloc-transfer
+install -o root -g root -m 0600 /home/<A_OPERATOR_LOGIN>/hemloc-b.csr.transfer \
+  /root/hemloc-transfer/hemloc-b.csr
+test -s /root/hemloc-transfer/hemloc-b.csr && \
+  openssl req -in /root/hemloc-transfer/hemloc-b.csr -noout -verify
+```
+
+При ошибке SSH/sudo, пустом файле или неуспешной проверке CSR остановиться.
+Для root-owned файлов нужен staging оператора; root SSH включать не требуется.
+
+**A/root — подпись сертификата B на A**, переменные задать именно в консоли A:
 
 ```bash
 export B_IP='<SLAVE_IP>' B_NODE='<SLAVE_NODE_ID>'
@@ -312,14 +335,19 @@ keyUsage=critical,digitalSignature,keyEncipherment
 extendedKeyUsage=serverAuth
 subjectAltName=IP:$B_IP
 EOF
-openssl req -in "$CSR" -noout -verify
-openssl x509 -req -in "$CSR" -CA "$CA_CERT" -CAkey "$CA_KEY" \
+test -s "$CSR" && \
+  openssl req -in "$CSR" -noout -verify && \
+  openssl x509 -req -in "$CSR" -CA "$CA_CERT" -CAkey "$CA_KEY" \
   -set_serial "0x$(openssl rand -hex 16)" -days 365 -sha256 \
-  -extfile /root/hemloc-sign-b/b.ext -out "$OUT"
-openssl verify -CAfile "$CA_CERT" "$OUT"
-openssl x509 -in "$OUT" -noout -ext subjectAltName -dates
-openssl x509 -in "$CA_CERT" -noout -fingerprint -sha256
+  -extfile /root/hemloc-sign-b/b.ext -out "$OUT" && \
+  openssl verify -CAfile "$CA_CERT" "$OUT" && \
+  openssl x509 -in "$OUT" -noout -ext subjectAltName -dates && \
+  openssl x509 -in "$CA_CERT" -noout -fingerprint -sha256
 ```
+
+Если test -s или openssl req завершились с ошибкой, **не подписывать**: повторить
+передачу CSR и выяснить причину. Проверка размера и подписи обязательна именно
+для принятого файла на A, а не только исходного файла B.
 
 Явный serial не меняет действующий ca.srl. Не продлевать сертификат за пределы
 срока CA. На B вернуть **только** ca.crt и hemloc-b.crt через проверенный канал.
@@ -332,9 +360,17 @@ ssh -T "$A_SSH" 'sudo -n cat /etc/hemloc/tls/ca.crt' > ca.crt
 scp hemloc-b.crt ca.crt "$B_SSH:"
 ```
 
-**B/root:** `install -m 0600 /home/<OPERATOR_LOGIN>/hemloc-b.crt
-/root/hemloc-transfer/hemloc-b.crt` и аналогично `ca.crt`. Проверить успешный
-SSH/SFTP transfer и CA fingerprint, затем:
+**B/root:** перенести оба принятых файла из staging. Проверить успешный
+SSH/SFTP transfer и CA fingerprint по независимому каналу.
+
+```bash
+install -o root -g root -m 0600 /home/<OPERATOR_LOGIN>/hemloc-b.crt \
+  /root/hemloc-transfer/hemloc-b.crt
+install -o root -g root -m 0600 /home/<OPERATOR_LOGIN>/ca.crt \
+  /root/hemloc-transfer/ca.crt
+```
+
+После установки проверить CA, IP SAN и совпадение публичных ключей:
 
 ```bash
 install -o root -g hemloc -m 0640 /root/hemloc-transfer/ca.crt /etc/hemloc/tls/ca.crt
@@ -346,9 +382,17 @@ openssl pkey -in /etc/hemloc/tls/hemloc-b.key -pubout -outform DER | sha256sum
 ```
 
 Последние два SHA должны совпасть; это public-key digests, секрет не выводится.
+При ошибке verify/checkip или несовпадении SHA не запускать Hemloc и не считать
+сертификат установленным корректно. Эта тройная проверка обязательна **после**
+установки сертификата, включая случай повторного копирования файлов.
 Для браузера установить **публичный CA** в доверенное хранилище рабочей станции
-по её правилам. Для Debian-клиента: `sudo install -m 0644 ca.crt
-/usr/local/share/ca-certificates/hemloc-ca.crt`, затем `sudo update-ca-certificates`.
+по её правилам. Для Debian-клиента выполнить:
+
+```bash
+sudo install -m 0644 ca.crt \
+  /usr/local/share/ca-certificates/hemloc-ca.crt
+sudo update-ca-certificates
+```
 На сервере приложения `web.ca` используется для проверки HTTPS соседа; системное
 доверие не обязательно, если CA явно задан. Не применять `curl -k`/verify=False.
 
@@ -389,8 +433,13 @@ test "$(wc -c < replication.token.transfer)" -ge 33
 scp replication.token.transfer "$B_SSH:replication.token.transfer"
 ```
 
-**B/root:** `install -o root -g hemloc -m 0640
-/home/<OPERATOR_LOGIN>/replication.token.transfer /etc/hemloc/replication.token`.
+**B/root:**
+
+```bash
+install -o root -g hemloc -m 0640 \
+  /home/<OPERATOR_LOGIN>/replication.token.transfer /etc/hemloc/replication.token
+```
+
 Удалить staging секрет с рабочего места и из home оператора после сверки и
 успешной авторизации; обычный rm не гарантирует физическое стирание SSD/backup.
 Не пересылать token в чат или Git. На A этот путь уже не менять без согласования.
@@ -401,6 +450,12 @@ scp replication.token.transfer "$B_SSH:replication.token.transfer"
 ```bash
 cp -p /etc/hemloc/hemloc.ini "/etc/hemloc/hemloc.ini.before-b-$(date -u +%Y%m%dT%H%M%SZ)"
 sudoedit /etc/hemloc/hemloc.ini
+chown root:hemloc /etc/hemloc/hemloc.ini
+chmod 0640 /etc/hemloc/hemloc.ini
+stat -c '%U:%G %a %n' /etc/hemloc/hemloc.ini
+sudo -u hemloc test -r /etc/hemloc/hemloc.ini
+sudo -u hemloc /opt/hemloc/.venv/bin/python -c \
+  'from hemloc.config import load; load("/etc/hemloc/hemloc.ini"); print("Configuration readable and valid")'
 ```
 
 
@@ -462,6 +517,10 @@ with Path('/etc/hemloc/hemloc.ini').open('x') as out:
 PY
 chown root:hemloc /etc/hemloc/hemloc.ini
 chmod 0640 /etc/hemloc/hemloc.ini
+stat -c '%U:%G %a %n' /etc/hemloc/hemloc.ini
+sudo -u hemloc test -r /etc/hemloc/hemloc.ini
+sudo -u hemloc /opt/hemloc/.venv/bin/python -c \
+  'from hemloc.config import load; load("/etc/hemloc/hemloc.ini"); print("Configuration readable and valid")'
 sudo -u hemloc /opt/hemloc/.venv/bin/python - <<'PY'
 from hemloc.config import load
 c = load('/etc/hemloc/hemloc.ini')
@@ -470,6 +529,10 @@ print('Valid slave configuration; announcements disabled')
 PY
 ```
 
+После **каждого** создания или редактирования INI повторить chown/chmod/stat,
+проверку чтения от hemloc и разбор Config, как в блоке выше. Редактор может
+заменить файл и изменить владельца/права, в том числе на root:root 0600.
+Ожидается root:hemloc 640; только root-чтения недостаточно.
 Проверка Config не проверяет сетевую доступность, TLS key match и наличие token.
 `use_proxy=no` игнорирует системные proxy env; yes использует INI http/https/no_proxy
 для внешних metadata. Репликация и локальный gRPC всегда напрямую. Произвольные
@@ -486,6 +549,20 @@ X-Forwarded-For не доверяются. Формат owner — запятые
 announcements=no, импорт через `Store.transaction/write_local`, только union.
 Это **не встроенная CLI-команда** и не новый канал автоматической репликации.
 Без переноса/проверки cache этап реальных анонсов заблокирован.
+
+### Новый protected ASN в изменённом INI
+
+Добавление ASN в файл ещё не означает его инициализацию. Текущий процесс читает
+INI при запуске: после разрешённого изменения надо восстановить права/чтение
+INI и отдельно согласовать **перезапуск только Hemloc** для перечитывания.
+GoBGP для этого не перезапускают. На каждом узле protection refresh должен
+успешно завершиться: проверить Info и наличие success metadata **для каждого**
+protected ASN. При недоступном IRR не выдумывать success и не удалять ASN ради
+экспорта. Старый cache сохраняется, но отсутствие success нового ASN означает,
+что готовность ещё не подтверждена. После успешной инициализации сделать новый
+read-only export; импортировать прежний файл, созданный до неё, недостаточно.
+Если переносчик разрешил экспорт неполного состояния, его строгий import всё
+равно должен отказать. Процедура не копирует рабочую БД между узлами.
 
 **B/root:** init-db требует root, а не sudo -u hemloc. База пока пустая.
 
@@ -800,9 +877,32 @@ unit v0.1.0 не включает config-auto-reload; SIGHUP/reload здесь �
 
 ### Отдельное разрешение announcements
 
-Оставить Junos import/export DENY-ANY. Только после разрешения оператора на B:
-`sudoedit /etc/hemloc/hemloc.ini`, изменить единственно `[gobgp] announcements=yes`,
-проверить INI и `systemctl restart hemloc`. GoBGP не перезапускать.
+**Допустимый выбранный оператором сценарий:** на B announcements=yes, а на
+каждом роутере import/export нового соседа остаются DENY-ANY. B поддерживает
+локальную RIB и экспортирует собственные пути; роутер их отклоняет своей
+политикой. Этот сценарий не равен announcements=no и не доказывает FIB/blackhole.
+Не переключать уже выбранный режим автоматически ради соответствия инструкции.
+Bootstrap и offline import выше требуют no; переход к yes — отдельное решение
+после импорта, синхронизации и готовности protection.
+
+Для **разрешённого оператором изменения**, B/root: изменить только
+[gobgp] announcements через редактор, затем проверить права/INI:
+
+```bash
+sudoedit /etc/hemloc/hemloc.ini
+chown root:hemloc /etc/hemloc/hemloc.ini
+chmod 0640 /etc/hemloc/hemloc.ini
+stat -c '%U:%G %a %n' /etc/hemloc/hemloc.ini
+sudo -u hemloc test -r /etc/hemloc/hemloc.ini
+sudo -u hemloc /opt/hemloc/.venv/bin/python -c \
+  'from hemloc.config import load; load("/etc/hemloc/hemloc.ini"); print("Configuration readable and valid")'
+systemctl restart hemloc
+systemctl is-active hemloc
+```
+
+Этот блок — инструкция на случай изменения, **не действие при чтении документа**.
+Если настройка уже yes и проверена, повторный restart не нужен. GoBGP не
+перезапускать, Junos DENY-ANY оставить.
 Dashboard: desired IPv4/IPv6 совпадают с ожидаемым набором после локальной protection,
 нет ошибочного Applied при stale наблюдениях; свежая локальная RIB содержит owner B,
 утверждённые next-hop/local-pref/communities. Детали prefix показывают экспорт
@@ -1042,8 +1142,14 @@ protection и no; возвращение yes — отдельное действ
 | Established, export=0 | announcements=no, пустой/неподтверждённый desired, protection, owner policy mismatch, stale observation; смотреть локальную RIB и attrs |
 | Adj-RIB-Out есть, роутер не применяет | DENY-ANY на роутере намеренно оставлен; экспорт B не доказывает принятие/FIB; отдельная операторская проверка |
 
-Минимум: `systemctl status hemloc gobgp`, `journalctl -u hemloc -u gobgp --since
-'-15 minutes'`, `ss -lntp`, HTTPS с CA, Dashboard/Info и диагностический status
+Минимум: `systemctl status hemloc gobgp`,
+
+```bash
+journalctl -u hemloc -u gobgp --since \
+  '-15 minutes'
+```
+
+Дополнительно: `ss -lntp`, HTTPS с CA, Dashboard/Info и диагностический status
 выше. Журналы/backup/config не публиковать целиком. Ошибки не исправлять удалением
 БД, сбросом protection, сменой owner или перезапуском GoBGP A.
 

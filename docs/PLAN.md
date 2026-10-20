@@ -107,3 +107,63 @@ The release tag is unchanged; this documentation is a local follow-up commit onl
 Next: operator reviews the private runbook, reserves the new owner, approves
 protection transfer, prepares TLS/auth and both-direction HTTPS access, then
 separately authorizes installation and later BGP activation on the new host.
+
+## Local protection export checkpoint
+
+An operator-authorized read-only export and access-restricted download copies
+were prepared outside Git. The standalone exporter was tested again on temporary
+databases, including incomplete protection readiness. It can faithfully export
+that incomplete state; import still fails closed rather than manufacturing
+successful ASN initialization. Details and checksums stay in the private runbook
+and ignored local receipt. Working configuration and service identities were
+verified unchanged. No working database writes, source queries to initialize
+protection, second-host connection, commit or push were performed.
+
+After operator initialization, a fresh read-only export passed strict readiness
+and digest validation, plus actual import/replay into a temporary slave database.
+Both configured protection identities now have successful initialization metadata.
+The restricted download copy was replaced atomically and previous exports were
+retained outside Git. Configuration and service identities remained unchanged.
+Next: transfer the fresh export securely and import on the stopped new node with
+matching configured protection; the real second node was not contacted here.
+
+## Installation-feedback documentation checkpoint
+
+Public and private runbooks now identify A as the CA signer for B, guard received
+CSR signing with nonempty/openssl verification checks, and require CA/SAN/key
+checks after certificate installation. Wrapped shell commands use explicit
+continuations. Every INI edit requires root:hemloc 0640, service-user readability
+and parsing checks because editors can replace a file and change its permissions.
+
+The guides distinguish HTTP downloads from bgpq4 TCP/43, master-only blocked-ASN
+refresh from both-node protection refresh, retained cache on IRR failure, and
+IRR requirements after promotion. New protected ASNs require configuration
+rereading and successful initialization before a usable fresh export. A slave
+running announcements=yes with router-side per-neighbor DENY-ANY is an explicit
+operator-selected validation scenario; documentation does not reset its mode.
+
+Site-specific installation facts and the limits of independent verification
+remain only in the ignored private runbook. No working configuration, replication
+mechanism, TLS implementation, service or BGP behavior changes in this stage.
+
+Checks for this follow-up: Bash/Python syntax in both runbooks; no wrapped inline
+commands; actual documented TLS signing on temporary files (valid CSR succeeds,
+empty and malformed CSR fail before certificate creation); CA/SAN/key checks,
+including wrong SAN and mismatched-key detection. The documentation harness also
+passes temporary protection transfer/replay/lock/readiness tests, Config loading,
+GoBGP dry-run and single-peer edits. No working certificates were issued here.
+
+## Future tasks (not implemented in v0.1.0)
+
+- Native slave bootstrap command: verified protection-only export/import,
+  monotonic cache/timestamp preservation, node/config checks and idempotent
+  offline initialization. Do not copy working databases or invent readiness.
+- Explicit self-signed peer enrollment: independently verify certificate identity,
+  SAN/validity and out-of-band fingerprint, then persist the approved fingerprint
+  with an explicit rotation process. Never implement trust through verify=False
+  or silently accept a changed certificate. Current CA/TLS validation remains
+  mandatory until a separately reviewed feature implements this workflow.
+- Reduce manual installation actions: validated preflight and staged provisioning
+  for proxy/network prerequisites, ownership/permissions, CSR/certificate checks,
+  protection readiness and replication. Keep service/BGP activation as explicit
+  operator gates; do not expose secrets in arguments or reports.
