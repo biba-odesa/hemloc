@@ -8,10 +8,10 @@ All addresses and ASNs below and in deploy/ are documentation values.
 ## Checkout and dependencies
 
 ```bash
-git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemloc.git
-cd hemloc
 sudo apt-get update
 sudo apt-get install --no-install-recommends git python3.13-venv ca-certificates bgpq4
+git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemloc.git
+cd hemloc
 ```
 
 Install a separately verified GoBGP binary using [BUILD.md](BUILD.md). Hemloc
@@ -43,11 +43,33 @@ Never infer IPv6 next-hop. Keep announcements=no and GoBGP peer-free at bootstra
 HTTP is available only as an explicitly selected local setup mode; use HTTPS for
 network access and replication. [OPERATIONS.md](OPERATIONS.md) covers TLS and SAN.
 
-Initialize as the service account; create the first administrator only on master:
+## Initialize master or slave
+
+Maintenance CLI, including init-db, requires root. Initialize before starting the
+service, then transfer database/sidecar/lock ownership to the service account.
+Set role=master or role=slave explicitly in the local INI first:
 
 ```bash
-sudo -u hemloc /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini init-db
+sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini init-db
+sudo chown -R hemloc:hemloc /var/lib/hemloc
+sudo chmod 0700 /var/lib/hemloc
+```
+
+**Master only:** create the first administrator interactively:
+
+```bash
 sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini user create operator --role admin
+```
+
+**Slave:** do not create users or reset passwords. Prepare authenticated verified
+HTTPS to the master and transfer the retained local protection separately; users,
+rules, ASN sets and shared audit arrive through snapshot/journal. Follow the
+self-contained Russian [slave installation guide](INSTALL_B.md), including the
+explicit v0.1.0 protection-transfer gap and bootstrap procedure.
+
+**Both roles:** install the units after reviewing their paths and permissions:
+
+```bash
 sudo install -o root -g root -m 0644 deploy/hemloc.service /etc/systemd/system/hemloc.service
 sudo install -o root -g root -m 0644 deploy/gobgp.service /etc/systemd/system/gobgp.service
 sudo systemd-analyze verify /etc/systemd/system/hemloc.service /etc/systemd/system/gobgp.service

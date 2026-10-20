@@ -61,3 +61,49 @@ certificates, replication trust and retained protection outside Git. Start a new
 node with announcements=no and validate it independently before authorizing BGP.
 Existing route withdrawal remains explicit; see OPERATIONS.md. No automatic
 failover or remote-router acceptance guarantee is introduced.
+
+## Second-node installation documentation checkpoint
+
+The Russian INSTALL_B.md is now a self-contained operator runbook for the fixed
+published v0.1.0 commit. It separates root/operator/CA/Junos actions, package proxy
+from application proxy, root-only init-db from master-only account bootstrap,
+verified TLS/token preparation, local-only gRPC, independent route ownership,
+disabled peers and explicit announcement/router-policy gates. DEPLOYMENT.md now
+installs Git before cloning and distinguishes master/slave initialization.
+
+A site-specific companion and verification artifacts stay under ignored var/;
+no operational identities, secret values or runtime configuration are public.
+The retained protection-transfer gap in v0.1.0 is explicit. A standalone runbook
+procedure exports only protection with a read-only SQLite snapshot and imports
+through the existing Store API into an offline slave using monotonic union,
+preserved success times, identity checks and the application lock. It is not
+an invented built-in CLI command, nor a new automatic replication path. Operators
+must review that temporary procedure before enabling a newly installed node.
+
+Completed checks for this documentation stage:
+
+- Bash syntax and embedded Python compilation; generated documentation-value INI
+  accepted by the actual Config loader; generated all-disabled TOML accepted by
+  real GoBGP --dry-run; one-peer edit leaves the other peers disabled.
+- Protection transfer on temporary databases: unchanged source, union and replay,
+  timestamp preservation, source/digest/schema/canonicalization/readiness checks,
+  role/announcements/process-lock gates, snapshot preservation of local cache.
+- Real loopback two-node HTTPS scenario: CA/SAN and auth rejection, snapshot and
+  journal replay, read-only roles, outage/restart/catch-up, manual promotion and
+  old-master state replacement. No existing daemon was used.
+- Separate online backup/restore drill: rules/users/password verification/audit,
+  history/cursor/protection/integrity and subsequent journal all preserved.
+- Synthetic TLS: independent node key/CSR, explicit SAN/EKU/serial signing,
+  CA verification and IP-SAN check. Systemd templates pass static verification.
+- Independent wheel/source builds match. Archive member/content review excludes
+  the private companion, transfer files, runtime artifacts and known operational
+  patterns; Git ignores the complete local deployment directory.
+
+Limits: no clean booted Debian VM/systemd deployment was available. System package
+installation, real-node addresses/connectivity, service startup/reboot, production
+CA certificate issuance and Junos changes are not executed acceptance results.
+No second host was contacted. Existing services/configuration were not changed.
+The release tag is unchanged; this documentation is a local follow-up commit only.
+Next: operator reviews the private runbook, reserves the new owner, approves
+protection transfer, prepares TLS/auth and both-direction HTTPS access, then
+separately authorizes installation and later BGP activation on the new host.
