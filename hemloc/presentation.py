@@ -173,11 +173,11 @@ def rule_card(rule):
     return result
 
 
-ACTIONS={'audit.prune':'Audit retention batch','notification.failed':'Notification failed','system.error':'Background operation failed','security.suspicious':'Suspicious access','rule.create':'Rule added','rule.import':'Rules imported','rule.delete':'Rule removed','rule.comment':'Comment updated',
+ACTIONS={'rule.batch':'Batch results','audit.prune':'Audit retention batch','notification.failed':'Notification failed','system.error':'Background operation failed','security.suspicious':'Suspicious access','rule.create':'Rule added','rule.import':'Rules imported','rule.delete':'Rule removed','rule.comment':'Comment updated',
          'asn.refresh':'ASN refreshed','asn.confirm':'ASN update confirmed','user.update':'User updated','auth.login':'Sign in',
          'auth.logout':'Sign out','auth.password':'Password changed','user.reset-password':'Password reset','user.create':'User created',
          'routes.withdraw-owned':'Owned routes withdrawn','auth.session':'Session check','http.request':'Request'}
-LABELS={'window_seconds':'Window (seconds)','request_type':'Request type','count':'Events removed','plan_digest':'Retention plan digest','reason':'Failure reason','exit_code':'Exit code','asn':'ASN','name':'Name','comment':'Comment','author':'Added by','created':'Added','prefixes':'Prefixes',
+LABELS={'batch_id':'Batch','added':'Added','skipped':'Skipped','invalid':'Invalid','unconfirmed':'Unconfirmed','reasons':'Reasons','window_seconds':'Window (seconds)','request_type':'Request type','count':'Events removed','plan_digest':'Retention plan digest','reason':'Failure reason','exit_code':'Exit code','asn':'ASN','name':'Name','comment':'Comment','author':'Added by','created':'Added','prefixes':'Prefixes',
         'origins':'Reference origins','last_success':'Last successful update','last_error':'Last error','next_update':'Next update',
         'pending':'Proposed update','role':'Role','enabled':'Enabled','kind':'Type','client_ip':'Client IP'}
 
@@ -189,6 +189,8 @@ def history_card(event):
     if not doc.get('kind') and 'role' not in doc:target=event['object'].split(':')[0]
     def value(key,item):
         if item is None:return '—'
+        if key=='reasons':
+            return ', '.join(f"{reason.replace('_',' ')}: {count}" for reason,count in sorted(item.items())) or 'None'
         if key=='prefixes':return f'{len(item)} prefixes'+(': '+', '.join(item[:3])+(' …' if len(item)>3 else '') if item else '')
         if key=='pending':return f"{len(item['prefixes'])} prefixes awaiting confirmation"
         if key=='origins':return ', '.join(f"AS{o['asn']}" for o in item) or 'Unknown'

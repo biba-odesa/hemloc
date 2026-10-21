@@ -36,6 +36,11 @@ class NewRule(Body):
     comment: str = Field(default='', max_length=10000)
 
 
+class BatchRules(Body):
+    value: str
+    comment: str = Field(default="", max_length=10000)
+
+
 class Comment(Body):
     comment: str = Field(max_length=10000)
 
@@ -106,9 +111,7 @@ def create_app(config, *, adapter=None, background=True):
     app.mount('/static', StaticFiles(directory=static), name='static')
 
     def record_http_failure(request, status):
-        if status in (400, 401, 403, 404, 405, 413, 415, 422, 429) and request.client:
-            app.state.store.notifications.suspicious(request.client.host, 'unauthorized_request' if status in (401, 403) else 'invalid_request')
-        if status < 400 or getattr(request.state, 'hemloc_audited', False):
+        if status < 400:
             return
         actor = getattr(request.state, 'actor', None)
         if actor is None:
@@ -116,6 +119,11 @@ def create_app(config, *, adapter=None, background=True):
                 actor, _ = app.state.auth.session(request.cookies.get('hemloc_session', ''))
             except Forbidden:
                 pass
+        expected_validation = actor and actor.role == 'admin' and (status in (400, 409, 413, 415, 422) or getattr(request.state, 'expected_validation', False))
+        if not expected_validation and status in (400,401,403,404,405,413,415,422,429) and request.client:
+            app.state.store.notifications.suspicious(request.client.host, 'unauthorized_request' if status in (401,403) else 'invalid_request')
+        if getattr(request.state, 'hemloc_audited', False):
+            return
         # The route category is fixed. Never persist URL/query/body/header values.
         path = request.url.path
         action, object_name = 'http.request', 'request'
@@ -137,9 +145,21 @@ def create_app(config, *, adapter=None, background=True):
     async def safety(request, call_next):
         response = None
         if request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            chunks, received = [], 0
+            async for chunk in request.stream():
+                received += len(chunk)
+                if received > config.request_max_bytes:
+                    response = JSONResponse({'error':f'Request exceeds {config.request_max_bytes} bytes; nothing saved'}, status_code=413)
+                    break
+                chunks.append(chunk)
+            if response is None:
+                request._body = b''.join(chunks)
+        if request.method not in ('GET', 'HEAD', 'OPTIONS'):
             origin = request.headers.get('origin')
             own_origin = str(request.base_url).rstrip('/')
-            if origin and origin != own_origin:
+            if response is not None:
+                pass
+            elif origin and origin != own_origin:
                 response = JSONResponse({'error': 'Cross-origin mutation rejected'}, status_code=403)
             elif request.headers.get('sec-fetch-site') == 'cross-site':
                 response = JSONResponse({'error': 'Cross-site mutation rejected'}, status_code=403)
@@ -164,8 +184,10 @@ def create_app(config, *, adapter=None, background=True):
 
     @app.exception_handler(Forbidden)
     async def forbidden(request, exc):
+        if str(exc).startswith('Protected ASN') or ' is inside protected ' in str(exc):
+            request.state.expected_validation = True
         request.state.hemloc_audited = getattr(exc, 'hemloc_audited', False)
-        return JSONResponse({'error': str(exc)}, status_code=403)
+        return JSONResponse({'error': str(exc), **({'session_required':True} if str(exc) in ('Login required','Session expired','Session revoked') else {})}, status_code=403)
 
     @app.exception_handler(Invalid)
     async def invalid(request, exc):
@@ -218,11 +240,20 @@ def create_app(config, *, adapter=None, background=True):
         response.set_cookie('hemloc_session', token, httponly=True, secure=config.tls, samesite='strict', max_age=8*3600, path='/')
         return response
 
+    @app.get('/api/session')
+    def session_status(request: Request):
+        try:
+            app.state.auth.session(request.cookies.get('hemloc_session', ''))
+            return {'authenticated':True}
+        except Forbidden:
+            return {'authenticated':False}
+
     @app.get('/api/me')
     def me(request: Request, actor=Depends(current)):
         _, csrf = app.state.auth.session(request.cookies.get('hemloc_session', ''))
         return {'login': actor.login, 'role': actor.role, 'node_role': config.role, 'node_id': config.node_id, 'csrf': csrf,
-                'password_change_node': config.node_id if config.role=='master' else config.peer_node_id}
+                'password_change_node': config.node_id if config.role=='master' else config.peer_node_id,
+                'batch_max_items':config.batch_max_items, 'request_max_bytes':config.request_max_bytes}
 
     @app.post('/api/logout')
     def logout(request: Request, actor=Depends(mutation)):
@@ -263,6 +294,37 @@ def create_app(config, *, adapter=None, background=True):
         except Exception:
             origins = []
         return {'status': 'saved', 'rule': app.state.service.add_manual(actor, candidate, body.comment, origins)}
+
+    @app.post('/api/coverage/batch')
+    def batch_coverage(body: BatchRules, actor=Depends(mutation)):
+        import re
+        from .coverage import index_for
+        from .presentation import View
+        from .domain import prefix
+        values = [v.strip() for v in re.split(r'[,\n\r]',body.value) if v.strip()]
+        if not 1 <= len(values) <= config.batch_max_items:
+            raise Invalid(f'Batch requires 1..{config.batch_max_items} elements')
+        index = index_for(View(app.state.service))
+        items, covered, invalid = [], 0, 0
+        protection = app.state.service.protection()
+        for raw in values:
+            try:
+                value = prefix(raw)
+                badges = index.summary(value)
+                if badges:
+                    covered += 1
+                if len(items) < 25:
+                    items.append({'prefix':value,'badges':badges,'error':protection.reason(value)})
+            except Invalid as exc:
+                invalid += 1
+                if len(items) < 25:
+                    items.append({'prefix':raw[:100],'badges':[],'error':str(exc)[:200]})
+        return {'items':items,'total':len(values),'covered':covered,'invalid':invalid}
+
+    @app.post('/api/rules/manual-batch')
+    def manual_batch(body: BatchRules, actor=Depends(mutation)):
+        from .batch import add
+        return add(app.state.service, actor, body.value, body.comment)
 
     @app.post('/api/rules/asn')
     def add_asn(body: NewRule, actor=Depends(mutation)):

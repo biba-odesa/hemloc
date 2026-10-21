@@ -6,7 +6,7 @@ import re
 from .domain import Conflict, Forbidden, Invalid
 
 ACTIONS = frozenset({
-    'audit.prune', 'notification.failed', 'system.error', 'security.suspicious',
+    'rule.batch', 'audit.prune', 'notification.failed', 'system.error', 'security.suspicious',
     'auth.login', 'auth.logout', 'auth.session', 'auth.password', 'http.request',
     'rule.create', 'rule.import', 'rule.comment', 'rule.delete',
     'routes.withdraw-owned', 'asn.refresh', 'asn.confirm', 'user.update', 'user.create', 'user.reset-password',
@@ -66,6 +66,19 @@ def validate_security_context(action, object_name, result, before, after):
         raise Invalid('Security events cannot contain before data')
     if after is None:
         return
+    if action == 'rule.batch' and object_name == 'rule' and result in ('invalid','failed'):
+        import uuid
+        try:
+            uuid.UUID(after['batch_id'])
+            valid = (set(after) == {'batch_id','added','skipped','invalid','unconfirmed','reasons'}
+                and all(type(after[k]) is int and 0 <= after[k] <= 10000 for k in ('added','skipped','invalid','unconfirmed'))
+                and isinstance(after['reasons'],dict) and set(after['reasons']) <= {'invalid_cidr','batch_duplicate','existing_duplicate','protected','infrastructure','not_attempted'}
+                and all(type(v) is int and 0 <= v <= 10000 for v in after['reasons'].values()))
+        except (ValueError, TypeError, KeyError, AttributeError):
+            valid = False
+        if valid:
+            return
+        raise Invalid('Invalid batch audit context')
     if action == 'security.suspicious' and object_name == 'request' and result == 'denied':
         if (isinstance(after, dict) and set(after) == {'client_ip', 'window_seconds', 'count', 'request_type'}
                 and login_context(after['client_ip']) == {'client_ip':after['client_ip']}

@@ -28,7 +28,7 @@ class WebTests(unittest.TestCase):
         hashed = password_hash(self.password)
         service.save_user(admin, 'admin', role='admin', password_hash=hashed)
         service.save_user(admin, 'guest', role='guest', password_hash=hashed)
-        self.client = TestClient(create_app(self.cfg, adapter=object(), background=False))
+        self.client = TestClient(create_app(self.cfg, adapter=object(), background=False), client=('192.0.2.100',12345))
         self.client.__enter__()
 
     def tearDown(self):
@@ -59,6 +59,47 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/login-history',params={'login':'admin'}).status_code,403)
         self.assertEqual(len(self.client.get('/api/login-history').json()['items']),1)
         self.assertNotIn('do-not-store',str(self.store.audit_history()))
+
+    def test_batch_http_limits_metadata_and_session_expiry_contract(self):
+        from unittest.mock import patch
+        self.assertEqual(self.client.get('/api/session').json(),{'authenticated':False})
+        self.assertEqual(self.client.get('/api/rules').status_code,403)
+        headers=self.login()
+        self.assertTrue(self.client.get('/api/session').json()['authenticated'])
+        with patch.object(self.client.app.state.metadata,'origins',side_effect=RuntimeError('Unavailable')) as metadata:
+            result=self.client.post('/api/rules/manual-batch',json={'value':'192.0.2.1,2001:db8::1\n10.1.1.1,broken,192.0.2.1/32','comment':'shared'},headers=headers)
+            metadata.assert_not_called()
+        self.assertEqual(result.status_code,200)
+        self.assertEqual((result.json()['added'],result.json()['skipped'],result.json()['invalid']),(2,1,2))
+        before=len(self.store.list('rule'))
+        oversized=','.join('192.0.2.2' for _ in range(1001))
+        response=self.client.post('/api/rules/manual-batch',json={'value':oversized},headers=headers)
+        self.assertEqual(response.status_code,422);self.assertIn('1000',response.json()['error'])
+        response=self.client.post('/api/rules/manual-batch',content=b'x'*(self.cfg.request_max_bytes+1),headers={**headers,'content-type':'application/json'})
+        self.assertEqual(response.status_code,413);self.assertEqual(len(self.store.list('rule')),before)
+        preview=self.client.post('/api/coverage/batch',json={'value':'192.0.2.1,2001:db8::1'},headers=headers)
+        self.assertEqual(preview.status_code,200)
+        with self.store.transaction() as db:db.execute('UPDATE sessions SET expires=0')
+        self.assertEqual(self.client.get('/api/session').json(),{'authenticated':False})
+        self.assertTrue(self.client.get('/api/routes').json()['session_required'])
+
+    def test_admin_validation_does_not_feed_suspicion_but_anonymous_scan_does(self):
+        from dataclasses import replace
+        from hemloc.notifications import Notifications
+        from hemloc.store import Store
+        cfg=replace(self.cfg,notifications_enabled=True,suspicious_threshold=2)
+        notifier=Notifications(Store(cfg))
+        self.client.app.state.store.notifications=notifier
+        headers=self.login()
+        for _ in range(4):
+            self.assertEqual(self.client.post('/api/rules/manual-batch',json={'value':''},headers=headers).status_code,422)
+        for _ in range(3):
+            self.assertEqual(self.client.post('/api/rules/manual',json={'value':'10.1.1.1'},headers=headers).status_code,403)
+        self.assertEqual(notifier.queue.qsize(),0)
+        self.assertEqual(len(notifier.sources),0)
+        self.client.cookies.clear()
+        for _ in range(2):self.client.get('/missing')
+        self.assertEqual(notifier.queue.qsize(),1)
 
     def test_unconfigured_replication_is_explicit_without_contacting_peer(self):
         self.login()

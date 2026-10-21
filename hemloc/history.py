@@ -13,7 +13,7 @@ CATEGORY = """CASE
  WHEN json_extract(body,'$.action') IN ('user.create','user.update','user.reset-password','auth.login','auth.logout','auth.session','auth.password')
       THEN CASE WHEN json_extract(body,'$.actor')='anonymous' AND json_extract(body,'$.action')!='auth.login'
                 AND json_extract(body,'$.result')!='success' THEN 'errors_security' ELSE 'users_access' END
- WHEN json_extract(body,'$.action') IN ('http.request','notification.failed','security.suspicious','system.error')
+ WHEN json_extract(body,'$.action') IN ('rule.batch','http.request','notification.failed','security.suspicious','system.error')
       OR (json_extract(body,'$.action') IN ('rule.create','rule.import','rule.comment','rule.delete','asn.refresh','asn.confirm','routes.withdraw-owned','audit.prune') AND json_extract(body,'$.result') IN ('denied','invalid','conflict','failed','throttled')) THEN 'errors_security'
  ELSE 'unknown' END"""
 
@@ -26,7 +26,8 @@ VISIBLE = '(' + UNION + ") e WHERE NOT EXISTS(SELECT 1 FROM audit_tombstones t W
 def setup(db):
     db.execute('CREATE TABLE IF NOT EXISTS audit_tombstones(id TEXT PRIMARY KEY, digest TEXT NOT NULL)')
     for table, suffix in (('documents', " WHERE kind='audit'"), ('security_audit', '')):
-        db.execute(f'CREATE INDEX IF NOT EXISTS history_{table} ON {table}(({CATEGORY}), json_extract(body,\'$.at\') DESC,id DESC)' + suffix)
+        db.execute(f'CREATE INDEX IF NOT EXISTS history_v2_{table} ON {table}(({CATEGORY}), json_extract(body,\'$.at\') DESC,id DESC)' + suffix)
+        db.execute(f'DROP INDEX IF EXISTS history_{table}')
 
 
 def query(store, actor, category='blocklist', q='', number=1, size=25, action='', result='', node='', who='', since=None, until=None):

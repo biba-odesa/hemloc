@@ -21,7 +21,7 @@ class NotificationTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.root=Path(self.tmp.name);self.handler=self.root/'handler';self.capture=self.root/'capture'
-        self.cfg=Config(tls=False,protected_asns=(),protected_prefixes=(),database=str(self.root/'a.sqlite'),notifications_enabled=True,notification_script=str(self.handler),notification_timeout_seconds=.15,notification_queue_size=2)
+        self.cfg=Config(tls=False,protected_asns=(),protected_prefixes=(),database=str(self.root/'a.sqlite'),notifications_enabled=True,notification_script=str(self.handler),notification_timeout_seconds=2.0,notification_queue_size=2)
         self.store=Store(self.cfg)
 
     def handler_code(self, code):

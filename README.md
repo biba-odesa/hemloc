@@ -91,3 +91,9 @@ notifications are disabled by default. See [audit operations](docs/AUDIT_RETENTI
 for the two-node upgrade gate, exact dry-run plans, latest-five-login protection,
 transport-data limitations and script sandbox requirements. No working cleanup or
 notification delivery is enabled by installing the source alone.
+
+The sign-in screen keeps the workspace hidden until authentication. Blocked IP
+list accepts comma/newline batches with independent commits and explicit partial
+results; [batch input and limits](docs/BATCH_INPUT.md) documents retry, audit and
+single-message notification behavior. The updated light theme uses blue surfaces;
+the dark palette is retained.

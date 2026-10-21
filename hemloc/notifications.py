@@ -122,6 +122,14 @@ class Notifications:
             lines.append(f'{len(selected)-20} further changes omitted')
         self.submit('Hemloc: blocklist changed', '\n'.join(lines))
 
+    def batch_committed(self, actor, result, documents, comment):
+        if self.config.role != 'master' or not self.config.notification_blocklist_changes:
+            return
+        body = (self.heading('Blocklist batch') + f"\nBatch: {result['batch_id']}\nAuthor: {field(actor.login,96)}"
+                + f"\nAdded: {result['added']} · Skipped: {result['skipped']} · Invalid: {result['invalid']} · Unconfirmed: {result['unconfirmed']}"
+                + f"\nComment: {field(comment)}\nPrefixes: " + ', '.join(d['prefixes'][0] for d in documents[:20]))
+        self.submit('Hemloc: blocklist changed',body)
+
     def login_blocked(self, address, login, seconds):
         if not self.config.notification_login_blocked:
             return

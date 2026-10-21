@@ -434,7 +434,7 @@ class Store:
         """Run authorization, transformation, journal and audit in one transaction."""
         return self.change_many(actor, action, [(kind, key, transform)])[0]
 
-    def change_many(self, actor, action, changes):
+    def change_many(self, actor, action, changes, *, batch_id=None, notify=True):
         if not changes or len(changes) > 1000:
             raise Invalid("Expected 1..1000 changes")
         with self.transaction() as db:
@@ -451,9 +451,12 @@ class Store:
                          "actor": actor.login, "action": action, "object": f"{kind}:{key}",
                          "before": redact(before), "after": redact(after),
                          "result": 'failed' if action == 'asn.refresh' and after and after.get('last_error') else 'saved'}
+                if batch_id:
+                    audit["after"] = dict(audit["after"] or {}) | {"batch_id":batch_id}
                 audit_op = {"kind": "audit", "id": audit["id"], "doc": audit}
                 self.operation(db, audit_op)
-                db.audit_events.append(audit)
+                if notify:
+                    db.audit_events.append(audit)
                 operations.extend([operation, audit_op])
                 results.append(after)
             sequence = int(self.meta(db, "sequence", "0")) + 1

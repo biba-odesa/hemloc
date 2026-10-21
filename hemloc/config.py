@@ -49,6 +49,8 @@ class Config:
     v6_community: str = "64512:666"
     owner: tuple = (64512, 100, 1)
 
+    batch_max_items: int = 1000
+    request_max_bytes: int = 2097152
     retention_enabled: bool = False
     blocklist_days: int = 365
     users_access_days: int = 90
@@ -69,6 +71,8 @@ class Config:
     suspicious_cooldown_seconds: int = 900
 
     def validate(self):
+        if not 1 <= self.batch_max_items <= 10000 or not 16384 <= self.request_max_bytes <= 16777216:
+            raise Invalid("batch_max_items must be 1..10000; request_max_bytes 16384..16777216")
         from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
         import datetime
         try:
@@ -126,7 +130,7 @@ def load(path: str) -> Config:
         "retention": ("retention_enabled", "blocklist_days", "users_access_days", "errors_security_days", "cleanup_time", "retention_timezone", "retention_batch_size"),
         "notifications": ("notifications_enabled", "notification_script", "notification_timeout_seconds", "notification_blocklist_changes", "notification_login_blocked", "notification_suspicious_access", "notification_queue_size", "notification_workers", "suspicious_threshold", "suspicious_window_seconds", "suspicious_cooldown_seconds"),
         "node": ("node_id", "role", "database", "peer_url", "peer_node_id", "token_file", "poll_seconds"),
-        "web": ("host", "port", "tls", "cert", "key", "ca"),
+        "web": ("host", "port", "tls", "cert", "key", "ca", "batch_max_items", "request_max_bytes"),
         "proxy": ("use_proxy", "http_proxy", "https_proxy", "no_proxy"),
         "protection": ("protected_asns", "protected_prefixes"),
         "irr": ("irr_command", "irr_server", "irr_sources", "irr_refresh_days", "timeout", "change_ratio", "change_absolute", "max_prefixes"),

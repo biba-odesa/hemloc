@@ -93,7 +93,7 @@ def main():
                     page.locator('#search').fill('no-results-fixture');page.locator('#search').press('Enter');expect(page.locator('#page-label')).to_have_text('No results')
                     page.locator('#search').fill('');page.locator('#search').press('Enter')
                     page.get_by_role('tab',name='Users & access',exact=True).click();expect(page.locator('#content')).to_contain_text('Sign in')
-                    page.get_by_role('tab',name='Errors & security',exact=True).click();expect(page.locator('#content tbody')).to_contain_text('Denied')
+                    page.get_by_role('tab',name='Errors & security',exact=True).click();expect(page.locator('#content tbody')).to_contain_text('Invalid')
                     page.get_by_role('tab',name='Blocklist changes',exact=True).click()
                     page.screenshot(path=str(output/f'history-admin-{theme}.png'),full_page=True)
                 page.locator('#logout').click();expect(page.locator('#login-panel')).to_be_visible();login('guest');page.locator('nav button[data-view=audit]').click();expect(page.locator('[role=tab]')).to_have_count(1)
@@ -103,11 +103,17 @@ def main():
                 page.locator('nav button[data-view=users]').click();expect(page.locator('.own-login-history tbody tr')).to_have_count(1)
                 page.locator('#logout').click();expect(page.locator('#login-panel')).to_be_visible();login('guest',p2);page.locator('nav button[data-view=users]').click();expect(page.locator('#password-button')).to_be_disabled()
                 # Notifications: only new originating master mutations enqueue; replicas never do.
-                apps[0].state.service.import_manual(admin,[{'value':'198.51.100.1','comment':'Unicode «тест»\nquote "x"'},{'value':'198.51.100.2','comment':'second'}])
+                import httpx,ssl
+                with httpx.Client(verify=ssl.create_default_context(cafile=cfg.ca),trust_env=False,base_url=f'https://127.0.0.1:{p1}') as client:
+                    signed=client.post('/api/login',json={'login':'admin','password':password});assert signed.status_code==200
+                    response=client.post('/api/rules/manual-batch',json={'value':'198.51.100.1,198.51.100.2,192.0.2.1,invalid-fixture','comment':'Unicode «тест»\nquote "x"'},headers={'x-csrf-token':signed.json()['csrf']})
+                    assert response.status_code==200
+                    assert (response.json()['added'],response.json()['skipped'],response.json()['invalid'])==(2,1,1)
                 apps[0].state.store.notifications.queue.join()
                 br.step();ar.step();br.step()
                 messages=[json.loads(line) for line in capture.read_text().splitlines()]
-                assert len(messages)==1 and 'Changes: 2' in messages[0]['body']
+                assert len(messages)==1 and 'Added: 2' in messages[0]['body']
+                assert a.list('rule')==b.list('rule')
                 assert not errors,errors
                 browser.close()
             print('PASS: real verified HTTPS snapshot/prune journal/replay/outage/restart catch-up; admin three tabs/guest one tab and direct API denials; SQL search/server pagination/empty/details in dark+light; own/slave account; one Unicode bulk notification and none on replication; isolated data only.')

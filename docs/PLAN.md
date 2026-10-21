@@ -313,3 +313,71 @@ Limitations and next operator action:
 - Working-data deletion remains unauthorized in this checkpoint. Present the exact
   live manifest/counts/cutoffs/digest separately before any first working cleanup.
   Push and deployment are not performed.
+
+## Pre-deployment sign-in, blue palette and independent IP batches
+
+The preceding retention/notification implementation remains intact and undeployed.
+No working node, config, database, audit, daemon or BGP session was modified.
+
+Implemented:
+
+- Initial HTML hides navigation/header/workspace; a dedicated sign-in card uses
+  only local SVG/CSS. Startup requests only public boolean session status before
+  any authenticated data. Logout immediately hides rows; session-required API
+  failures or the 20-second session probe clear content and stop refresh. Native
+  autocomplete, keyboard controls, dark preference and mobile layout remain.
+- Blue light-theme variables use the agreed surfaces. Dark palette values remain.
+  Stronger secondary navigation/input/disabled colors retain readable contrast:
+  checked normal text >=4.5:1, input borders/focus >=3:1. Both themes, dialogs,
+  coverage badges and mobile login were inspected in real Chromium.
+- Multiline comma/newline manual input with one retained comment. Independent
+  rule/audit/journal commits, SQLite duplicate constraints, exact per-item outcomes,
+  common batch ID, explicit partial/interrupted responses and no implicit subnet
+  expansion. Successful fields clear only after confirmed responses; non-applied
+  input stays, including after a deliberately lost post-commit response.
+- [web] batch_max_items=1000 (range 1..10000), request_max_bytes=2097152
+  (16384..16777216). Whole over-limit requests fail before rule writes. Batch
+  metadata calls are zero. Processing and coverage preview run in worker threads;
+  preview uses the existing index and renders at most 25 rows.
+- Successful changes stay in Blocklist changes with batch provenance. One bounded
+  reason/count summary covers non-applied items in Errors & security. One originating
+  master notification per batch with additions; none on duplicate-only retry or
+  slave replay. Expected admin validation/protection errors remain audited but
+  do not feed scanning alerts. Protected terminology and semantics are retained.
+
+Verification:
+
+- Full unittest: 131 discovered, 130 passed, one opt-in live-target test skipped.
+  Targeted web/batch checks also cover final validation and preview refinements.
+  Tests use separate DBs, no working audit mutations and no real Talk script.
+- Concurrent/repeated IPv4/IPv6 batches, malformed/host-bit CIDR, protected ranges,
+  existing/in-batch duplicates, body/count limits, unavailable metadata, partial
+  storage failure and failure to persist the summary. Confirmed results remain
+  explicit and data does not roll back across independently committed items.
+- Category indexes migrate to the current classifier expression without changing
+  audit documents; EXPLAIN verifies indexed filtering on shared and pending sources.
+- Actual HTTPS pair: new batch API commits its valid subset, master/slave rule and
+  audit state converge and the fake executable receives exactly one batch message.
+  Existing snapshot/prune/journal/replay/outbox/outage/restart checks pass. Actual
+  v0.1.0 Store compatibility and post-prune rejection remain covered by unit tests.
+- Actual Chromium: anonymous initial view and request interception, keyboard Enter,
+  autocomplete, both themes, mobile width, retained comment/input, duplicate retry,
+  commit followed by deliberately dropped response, safe resend, coverage, logout,
+  session expiry and stopped refresh. Info EN/RU/UK dark/light checks pass.
+- Isolated peer-free GoBGP 4.10.0 lifecycle runner passes IPv4/IPv6 attributes,
+  ownership, repair, lost-call recovery, restart, protection withdrawal and specific
+  deletion. It uses its own config/ports; working GoBGP is not inspected or changed.
+- Notification test timeout raised from 150ms to 2s to allow actual Python startup
+  under concurrent browser load; the sleeping fixture still proves one timeout
+  attempt, while success/nonzero fixtures must really execute. Runtime default
+  remains 15s. No retry behavior was introduced.
+
+Delivery: publish ordered existing IRR diagnostics, retention/notification and this
+follow-up commit to origin/main after artifact, operational-pattern and complete
+outgoing-history checks. Preserve v0.1.0 exactly. Deployment is not authorized here.
+Next operator action is a separate B-then-A update at one fixed commit, both new
+features disabled; validate capability/cursors/security acknowledgments before
+notification enablement or exact real prune preview. New batch limits are optional
+local [web] entries; defaults work without editing either node's INI. Retention
+and notifications remain disabled unless explicitly enabled. See BATCH_INPUT.md
+and AUDIT_RETENTION.md for protocol and transport-retention limits.
