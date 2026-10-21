@@ -432,3 +432,26 @@ active unit/drop-in and all local configuration. Prepare rollback and a SQLite
 API backup, migrate Python distributions, verify canonical/legacy launchers,
 HTTPS and replica status without creating a production login. GoBGP is untouched.
 B is not contacted; provide a manual same-commit upgrade instruction after push.
+
+### Deployment and publication checkpoint
+
+Source commit de6fa1a0a7ade3e92096d4944744aaa66fda44b4 was built from a
+clean tracked export and installed on the authorized existing master as Hemlock
+0.2.0. The previous distribution was removed before installing the new one;
+legacy CLI and import aliases are verified. A pre-update SQLite API backup and
+previous-source rollback wheel are retained locally, outside the delivery.
+
+Verified after deployment: existing service active, HTTPS validated with the
+configured CA, corrected page title, replication fresh with matching history and
+zero lag. Configuration/unit/drop-ins hashes and working GoBGP PID/start time
+were unchanged; replicated documents, identity/cursor and protection were
+unchanged during the stopped-service package replacement. Only the application
+service was restarted. No production login/test event or rule was created.
+
+Publication checks scan all reachable commits, not only the tree: 11 commits and
+265 unique blobs before this checkpoint, zero secret/private-site findings.
+Runtime files and local transfer/deployment instructions are excluded. No existing
+release tag is moved. The final documentation commit is scanned again before a
+normal main push. Next action: operator upgrades the second node using the same
+source revision and the existing paths, then verifies the corrected name and
+green In sync / zero lag. No feature/config changes are required by this update.
