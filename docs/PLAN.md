@@ -514,3 +514,33 @@ browser checks passed. A clean wheel installed into a separate venv with the
 runtime hash lock passes pip check, canonical/legacy CLI and complete web imports.
 Previous 0.2.0 source rollback wheel is prepared locally. Publication/deployment
 remain the next authorized actions; no active data was used in these tests.
+
+### Verified master deployment and publication
+
+Source commit bd9c30bbd0420801c62c83842e1b6a2d3abe2da3 was scanned (all
+13 reachable commits/287 unique blobs, zero findings) and pushed normally before
+installation. The final wheel was built from that committed archive and verified
+in a separate locked-dependency venv. The authorized existing master now runs
+0.2.1. A normal SQLite API backup and the previous 0.2.0 rollback wheel are kept
+locally outside the delivery.
+
+Verified: configured-CA HTTPS; fresh reconciliation status obtained from RAM over
+the authenticated local status API; all desired routes confirmed. Existing rules,
+users, metadata and protection were unchanged during stopped-service installation.
+Config, unit/drop-ins, notification script/private settings and GoBGP process/RIB
+were unchanged. Only the application service was restarted; no test login, rule,
+notification or retention deletion was generated on the active installation.
+Legacy SQLite observation rows were not updated by the new process.
+
+A post-update 60-second passive sample recorded 18.42% of one CPU core, 76.12 MiB
+RSS and 4.344 MiB physical writes; the last durable peer acknowledgement matched
+history/cursor (zero lag), with no worker-error audit events in the window. This
+shorter window is not a controlled comparison with the earlier five-minute sample;
+the synthetic comparison above remains the reproducible measurement.
+
+The second node is not changed. Next operator action: update its existing venv
+from the same reviewed main history using a clean archive, preserve config/TLS/
+owner/protection/notification settings, restart only the application and verify
+fresh green In sync/zero lag plus current RIB/export observations. No new config
+blocks or enabled features are required. Current/previous versions remain wire
+compatible. Existing release tags are not moved.
