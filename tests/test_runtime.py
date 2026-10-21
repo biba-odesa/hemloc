@@ -5,13 +5,13 @@ import unittest
 import uuid
 from unittest.mock import patch
 
-from hemloc.auth import Auth
-from hemloc.config import Config
-from hemloc.domain import Actor, Conflict, Forbidden
-from hemloc.reconcile import Path as BGPPath, Reconciler
-from hemloc.replication import PeerTransport, PeerUnavailable, Replicator
-from hemloc.service import Service
-from hemloc.store import Store
+from hemlock.auth import Auth
+from hemlock.config import Config
+from hemlock.domain import Actor, Conflict, Forbidden
+from hemlock.reconcile import Path as BGPPath, Reconciler
+from hemlock.replication import PeerTransport, PeerUnavailable, Replicator
+from hemlock.service import Service
+from hemlock.store import Store
 
 ADMIN = Actor('admin', 'admin')
 HASH = '$argon2id$v=19$m=65536,t=3,p=4$fake$fake'
@@ -204,7 +204,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.store.local('sync')['code'],'two_masters')
 
     def test_replication_transport_explicitly_disables_environment_proxy(self):
-        with patch('hemloc.replication.build_opener') as opener:
+        with patch('hemlock.replication.build_opener') as opener:
             transport = PeerTransport(replace(self.a, use_proxy=True, https_proxy='http://proxy:3128'))
             proxy_handler = opener.call_args.args[0]
             self.assertEqual(proxy_handler.proxies, {})

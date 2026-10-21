@@ -7,12 +7,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from hemloc.batch import add
-from hemloc.config import Config
-from hemloc.domain import Actor, Forbidden, Invalid
-from hemloc.notifications import Notifications
-from hemloc.service import Service
-from hemloc.store import Store, encode
+from hemlock.batch import add
+from hemlock.config import Config
+from hemlock.domain import Actor, Forbidden, Invalid
+from hemlock.notifications import Notifications
+from hemlock.service import Service
+from hemlock.store import Store, encode
 
 ADMIN=Actor('operator','admin')
 
@@ -86,7 +86,7 @@ class BatchTests(unittest.TestCase):
         self.assertIsNotNone(self.store.get('rule',result['items'][0]['rule_id']))
 
     def test_classifier_index_upgrade_keeps_audit_and_uses_current_expression(self):
-        from hemloc.history import CATEGORY,VISIBLE
+        from hemlock.history import CATEGORY,VISIBLE
         self.service.add_manual(ADMIN,'192.0.2.30','Keep audit')
         before=self.store.audit_history()
         with self.store.connect() as db:
@@ -100,7 +100,7 @@ class BatchTests(unittest.TestCase):
         self.assertTrue(any('history_v2_security_audit' in plan for plan in plans))
 
     def test_metadata_is_not_called_by_batch(self):
-        with patch('hemloc.irr.Metadata.origins',side_effect=RuntimeError('Unavailable metadata')) as origins:
+        with patch('hemlock.irr.Metadata.origins',side_effect=RuntimeError('Unavailable metadata')) as origins:
             result=add(self.service,ADMIN,'192.0.2.20,2001:db8::20')
         self.assertEqual(result['added'],2);origins.assert_not_called()
 

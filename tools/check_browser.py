@@ -13,11 +13,11 @@ from urllib.parse import urlsplit
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 
-from hemloc.auth import password_hash
-from hemloc.config import load
-from hemloc.domain import Actor
-from hemloc.service import Service
-from hemloc.store import Store
+from hemlock.auth import password_hash
+from hemlock.config import load
+from hemlock.domain import Actor
+from hemlock.service import Service
+from hemlock.store import Store
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
         listener.bind(('127.0.0.1',0))
         port = listener.getsockname()[1]
     ini = ConfigParser(interpolation=None)
-    ini.read(Path(__file__).resolve().parents[1]/'deploy/hemloc.example.ini')
+    ini.read(Path(__file__).resolve().parents[1]/'deploy/hemlock.example.ini')
     ini['node'].update(database=str(directory/'browser.sqlite'),peer_url='')
     ini['web'].update(host='127.0.0.1',port=str(port),tls='no')
     ini['protection']['protected_asns'] = ''
@@ -51,7 +51,7 @@ def main():
     for login,role in [('admin','admin'),('guest','guest')]:
         service.save_user(Actor('lab:browser','admin'),login,role=role,password_hash=password_hash(password))
     log = (directory/'app.log').open('wb')
-    process = subprocess.Popen([sys.executable,'-m','hemloc','--config',str(path),'serve'],stdout=log,stderr=log)
+    process = subprocess.Popen([sys.executable,'-m','hemlock','--config',str(path),'serve'],stdout=log,stderr=log)
     base = f'http://127.0.0.1:{port}'
     errors, external = [], []
     try:
@@ -92,12 +92,12 @@ def main():
                 page.locator('#edit-form input[name=value]').fill(value)
                 page.locator('#edit-form textarea').fill(comment)
                 page.locator('#edit-form button.primary').click()
-            comment = '<img src=x onerror="window.hemlocInjected=true">'
+            comment = '<img src=x onerror="window.hemlockInjected=true">'
             add('192.0.2.0/24',comment)
             expect(page.locator('#editor')).not_to_be_visible()
             expect(page.locator('#content')).to_contain_text(comment)
             assert page.locator('#content img').count() == 0
-            assert page.evaluate('window.hemlocInjected === undefined')
+            assert page.evaluate('window.hemlockInjected === undefined')
             add('192.0.2.1')
             expect(page.locator('#editor')).not_to_be_visible()
             add('192.0.2.1/24')

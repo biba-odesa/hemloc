@@ -10,12 +10,12 @@ import unittest
 import uuid
 from zoneinfo import ZoneInfo
 
-from hemloc.config import Config, load
-from hemloc.domain import Actor, Conflict, Forbidden, Invalid
-from hemloc.history import query
-from hemloc.retention import CAPABILITY, RetentionWorker, due_day, execute, export, preview, write_private
-from hemloc.service import Service
-from hemloc.store import Store, digest, encode
+from hemlock.config import Config, load
+from hemlock.domain import Actor, Conflict, Forbidden, Invalid
+from hemlock.history import query
+from hemlock.retention import CAPABILITY, RetentionWorker, due_day, execute, export, preview, write_private
+from hemlock.service import Service
+from hemlock.store import Store, digest, encode
 
 ADMIN = Actor('admin', 'admin')
 GUEST = Actor('guest', 'guest')
@@ -180,7 +180,7 @@ class RetentionTests(unittest.TestCase):
 
     def test_partial_batch_restart_exact_replay_and_serialization(self):
         from unittest.mock import patch
-        from hemloc.workers import process_lock
+        from hemlock.workers import process_lock
         for _ in range(5):self.event()
         plan=preview(self.a,NOW);original=self.a.append_journal;calls=[0]
         def append(db,operations):
@@ -219,7 +219,7 @@ class RetentionTests(unittest.TestCase):
         self.assertIsNone(upgraded.get('audit',event['id']))
 
     def test_prune_preserves_rules_users_credentials_sessions_and_protection(self):
-        from hemloc.auth import Auth
+        from hemlock.auth import Auth
         service=Service(self.a)
         service.save_user(ADMIN,'admin',role='admin',password_hash='$argon2id$v=19$m=65536,t=3,p=4$fake$fake')
         service.add_manual(ADMIN,'192.0.2.1','Keep rule')
@@ -237,7 +237,7 @@ class RetentionTests(unittest.TestCase):
         self.assertTrue(export(self.a,dest)['written']);self.assertEqual(dest.stat().st_mode & 0o777,0o600)
         with self.assertRaises(FileExistsError):export(self.a,dest)
         plan=Path(self.tmp.name)/'plan.json';write_private(plan,preview(self.a,NOW));self.assertEqual(plan.stat().st_mode & 0o777,0o600)
-        cfg=load('deploy/hemloc.example.ini');self.assertFalse(cfg.retention_enabled);self.assertFalse(cfg.notifications_enabled)
+        cfg=load('deploy/hemlock.example.ini');self.assertFalse(cfg.retention_enabled);self.assertFalse(cfg.notifications_enabled)
         for change in ({'blocklist_days':0},{'cleanup_time':'25:00'},{'retention_timezone':'Nowhere/Invalid'},{'notification_workers':100}):
             with self.assertRaises(Invalid):replace(self.cfg,**change).validate()
 

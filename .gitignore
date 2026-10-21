@@ -31,3 +31,6 @@ codex-session-*.md
 *.whl
 *.tar.gz
 release-artifacts/
+
+# Canonical local configuration (the existing deployment keeps hemloc.ini).
+hemlock.ini

@@ -7,13 +7,13 @@ import sqlite3
 import tempfile
 import unittest
 from fastapi.testclient import TestClient
-from hemloc.auth import password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.presentation import protection_page
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.web import create_app
+from hemlock.auth import password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.presentation import protection_page
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.web import create_app
 
 
 class InfoTests(unittest.TestCase):

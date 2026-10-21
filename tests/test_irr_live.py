@@ -6,8 +6,8 @@ import socketserver
 import threading
 import unittest
 
-from hemloc.config import Config
-from hemloc.irr import IRR, IRRError
+from hemlock.config import Config
+from hemlock.irr import IRR, IRRError
 
 
 @unittest.skipUnless(shutil.which('bgpq4'),'bgpq4 is not installed')

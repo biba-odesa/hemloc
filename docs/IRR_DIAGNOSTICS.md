@@ -97,7 +97,7 @@ On an affected host: first save the read-only probe output. If failure reproduce
 resolve that specific failure rather than assuming an empty IPv6 set is wrong.
 After a separately authorized deployment of the logging change, check journalctl
 at/after the saved next-attempt time; look for the structured failure or success
-and verify the UI error clears only after success. Only Hemloc needs an approved
+and verify the UI error clears only after success. Only Hemlock needs an approved
 restart to load new Python code; GoBGP does not. No deployment/restart is performed
 by the probe or this documentation. If fresh shell results succeed but service
 attempts still fail when due, collect effective unit differences and the new

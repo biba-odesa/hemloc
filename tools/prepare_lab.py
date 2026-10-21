@@ -26,7 +26,7 @@ def main():
     directory.mkdir(parents=True, exist_ok=False, mode=0o700)
     openssl('genpkey', '-algorithm', 'RSA', '-pkeyopt', 'rsa_keygen_bits:3072', '-out', str(directory/'ca.key'))
     openssl('req', '-x509', '-new', '-key', str(directory/'ca.key'), '-sha256', '-days', '30',
-            '-subj', '/CN=Hemloc-Test-CA', '-out', str(directory/'ca.crt'),
+            '-subj', '/CN=Hemlock-Test-CA', '-out', str(directory/'ca.crt'),
             '-addext', 'basicConstraints=critical,CA:TRUE', '-addext', 'keyUsage=critical,keyCertSign,cRLSign')
     (directory/'peer.token').write_text(secrets.token_urlsafe(48) + '\n')
     fixture = Path(__file__).resolve().with_name('lab_irr.py')
@@ -40,7 +40,7 @@ def main():
                 '-CAcreateserial', '-out', cert, '-days', '14', '-sha256', '-extfile', str(extension))
         openssl('verify', '-CAfile', str(directory/'ca.crt'), '-verify_ip', '127.0.0.1', cert)
         ini = ConfigParser(interpolation=None)
-        ini.read(Path(__file__).resolve().parents[1]/'deploy/hemloc.example.ini')
+        ini.read(Path(__file__).resolve().parents[1]/'deploy/hemlock.example.ini')
         ini['node'].update(node_id=f'block-{label}', role=role, database=str(directory/f'{label}.sqlite'),
                            peer_node_id=f'block-{peer}', peer_url=f'https://127.0.0.1:{peer_port}',
                            token_file=str(directory/'peer.token'), poll_seconds='0.2')

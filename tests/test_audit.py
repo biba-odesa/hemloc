@@ -7,12 +7,12 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from hemloc.auth import Auth
-from hemloc.config import Config
-from hemloc.domain import Actor, Conflict, Forbidden, Invalid
-from hemloc.replication import Replicator
-from hemloc.service import Service
-from hemloc.store import Store, encode, redact
+from hemlock.auth import Auth
+from hemlock.config import Config
+from hemlock.domain import Actor, Conflict, Forbidden, Invalid
+from hemlock.replication import Replicator
+from hemlock.service import Service
+from hemlock.store import Store, encode, redact
 
 ADMIN = Actor('admin', 'admin')
 HASH = '$argon2id$v=19$m=65536,t=3,p=4$fake$fake'

@@ -10,13 +10,13 @@ import time
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import uvicorn
 from playwright.sync_api import sync_playwright,expect
-from hemloc.auth import password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.reconcile import Path as Route
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.web import create_app
+from hemlock.auth import password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.reconcile import Path as Route
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.web import create_app
 from tools.check_gobgp import port,wait_for
 
 
@@ -25,7 +25,7 @@ def main():
     parser.add_argument('--directory',required=True)
     args=parser.parse_args()
     output=Path(args.directory);output.mkdir(parents=True,exist_ok=False)
-    with tempfile.TemporaryDirectory(prefix='hemloc-ui-redesign-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='hemlock-ui-redesign-') as tmp:
         cfg=Config(tls=False,database=str(Path(tmp)/'a.sqlite'),node_id='hemloc-a',peer_node_id='hemloc-b',
                    protected_asns=(),protected_prefixes=(),metadata_enabled=False,announcements=True,v6_next_hop='2001:db8::1')
         store=Store(cfg);service=Service(store);actor=Actor('lab','admin');password='a1'+secrets.token_urlsafe(24)
@@ -61,7 +61,7 @@ def main():
                 for theme in ('dark','light'):
                     if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme').click()
                     page.locator('nav button[data-view=dashboard]').click()
-                    expect(page.locator('#peer-title')).to_have_text('Hemloc-B status')
+                    expect(page.locator('#peer-title')).to_have_text('Hemlock-B status')
                     expect(page.locator('#peer-state')).to_have_text('Not configured')
                     expect(page.locator('#blocked-total')).to_have_text('2')
                     expect(page.locator('#application-warning')).to_contain_text('Pending: 62')
@@ -96,7 +96,7 @@ def main():
                     assert page.locator('#content pre').count()==0
                     for rule in store.list('rule'):assert rule['id'] not in page.locator('#content').inner_text()
                     page.locator('nav button[data-view=info]').click()
-                    for language,title in [('EN','About Hemloc'),('RU','О Hemloc'),('UK','Про Hemloc')]:
+                    for language,title in [('EN','About Hemlock'),('RU','О Hemlock'),('UK','Про Hemlock')]:
                         page.locator('.language-switch button').filter(has_text=language).click()
                         expect(page.locator('.info-page')).to_contain_text(title)
                         expect(page.locator('.info-page')).to_contain_text('192.0.0.0/16')

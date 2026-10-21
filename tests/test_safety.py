@@ -5,14 +5,14 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from hemloc.config import Config, load
-from hemloc.domain import Actor, Conflict, Forbidden, Invalid
-from hemloc.gobgp import inspect_attributes, nlri, unicast_attributes
-from hemloc.irr import IRR, IRRError, bounded_process
-from hemloc.replication import NoRedirect, PeerUnavailable
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.workers import ASNWorker, ProtectionWorker, process_lock
+from hemlock.config import Config, load
+from hemlock.domain import Actor, Conflict, Forbidden, Invalid
+from hemlock.gobgp import inspect_attributes, nlri, unicast_attributes
+from hemlock.irr import IRR, IRRError, bounded_process
+from hemlock.replication import NoRedirect, PeerUnavailable
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.workers import ASNWorker, ProtectionWorker, process_lock
 
 ADMIN = Actor('admin', 'admin')
 
@@ -40,7 +40,7 @@ class SafetyTests(unittest.TestCase):
             pass
 
     def test_example_config_and_family_settings(self):
-        cfg = load('deploy/hemloc.example.ini')
+        cfg = load('deploy/hemlock.example.ini')
         self.assertFalse(cfg.announcements)
         self.assertFalse(cfg.tls)
         self.assertEqual(cfg.v4_next_hop, '192.0.2.254')

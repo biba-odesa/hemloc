@@ -3,12 +3,12 @@ from dataclasses import replace
 from pathlib import Path
 import tempfile
 import unittest
-from hemloc.config import Config
-from hemloc.domain import Conflict
-from hemloc.maintenance import withdraw_owned
-from hemloc.reconcile import Path as Route
-from hemloc.store import Store
-from hemloc.workers import process_lock
+from hemlock.config import Config
+from hemlock.domain import Conflict
+from hemlock.maintenance import withdraw_owned
+from hemlock.reconcile import Path as Route
+from hemlock.store import Store
+from hemlock.workers import process_lock
 
 
 class DrainTests(unittest.TestCase):

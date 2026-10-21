@@ -10,15 +10,15 @@ import tempfile
 import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.check_gobgp import port, wait_for
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.gobgp import GoBGP
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.reconcile import Reconciler
-from hemloc.auth import password_hash
-from hemloc.web import create_app
-from hemloc.web import observe_bgp
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.gobgp import GoBGP
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.reconcile import Reconciler
+from hemlock.auth import password_hash
+from hemlock.web import create_app
+from hemlock.web import observe_bgp
 from fastapi.testclient import TestClient
 
 
@@ -32,7 +32,7 @@ def main():
         raise SystemExit("Run isolated test processes as an unprivileged user")
     binary = str(Path(args.binary).resolve())
     assert '4.10.0' in subprocess.check_output([binary, '--version'], text=True)
-    with tempfile.TemporaryDirectory(prefix='hemloc-peer-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='hemlock-peer-') as tmp:
         directory = Path(tmp)
         ports = set()
         while len(ports) < 4:

@@ -7,11 +7,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from hemloc.config import Config
-from hemloc.irr import IRR, IRRError, bounded_process, failure_details
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.workers import ProtectionWorker
+from hemlock.config import Config
+from hemlock.irr import IRR, IRRError, bounded_process, failure_details
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.workers import ProtectionWorker
 
 LOGGER = 'uvicorn.error.protection'
 
@@ -48,15 +48,15 @@ class ProtectionDiagnosticTests(unittest.TestCase):
                     raise IRRError('upstream failed')
                 return ['198.51.100.0/24']
         resolver = Resolver()
-        with patch('hemloc.workers.time.time', return_value=10000):
+        with patch('hemlock.workers.time.time', return_value=10000):
             with self.assertLogs(LOGGER, logging.WARNING):
                 ProtectionWorker(self.service, resolver).step()
         self.assertEqual(self.store.local('protection_schedule')['64496']['next'],13600)
         restarted = Service(Store(self.config))
-        with patch('hemloc.workers.time.time', return_value=10001):
+        with patch('hemlock.workers.time.time', return_value=10001):
             ProtectionWorker(restarted, resolver).step()
         self.assertEqual(resolver.calls, 1)
-        with patch('hemloc.workers.time.time', return_value=13600):
+        with patch('hemlock.workers.time.time', return_value=13600):
             with self.assertLogs(LOGGER, logging.INFO):
                 ProtectionWorker(restarted, resolver).step()
         state = self.store.local('protection_schedule')['64496']

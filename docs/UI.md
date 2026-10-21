@@ -7,13 +7,13 @@ changing Info language does not change the rest of the interface.
 Dashboard has two summary cards: the configured peer node's status and Blocked
 prefixes. There is no announcement-mode card. The announcements setting and
 routing semantics are unchanged. The peer heading uses peer_node_id (hemloc-b
-is displayed as Hemloc-B); B therefore displays Hemloc-A when configured that
+is displayed as Hemlock-B); B therefore displays Hemlock-A when configured that
 way. Not configured, unavailable, stale, catching up and in-sync are distinct.
 Last successful sync is retained separately from failed attempts as local
 telemetry only. It does not change polling, journal application or failover.
 
 Blocked IPv4/IPv6/Total count unique desired prefixes actually observed locally
-with the correct Hemloc owner, local origin and expected attributes. Duplicate
+with the correct Hemlock owner, local origin and expected attributes. Duplicate
 rules/paths do not increase counts. Required counts remain separate. Missing
 paths/attribute repair are Pending, known reconciliation failures or missing
 next-hop are Failed, and protection exclusions count unique prefixes. Pending

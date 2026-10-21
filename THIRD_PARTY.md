@@ -1,6 +1,6 @@
 # Third-party notices
 
-Hemloc code is distributed under MIT, copyright biba-odesa (LICENSE).
+Hemlock code is distributed under MIT, copyright biba-odesa (LICENSE).
 Third-party components retain their own licenses; this notice does not relicense
 them. The package manager and source archives provide their complete notices.
 

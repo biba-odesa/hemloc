@@ -2,8 +2,8 @@
 from html.parser import HTMLParser
 from pathlib import Path
 import unittest
-from hemloc.auth import password_hash, password_verify, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH
-from hemloc.domain import Invalid
+from hemlock.auth import password_hash, password_verify, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH
+from hemlock.domain import Invalid
 
 
 class PasswordPolicyTests(unittest.TestCase):
@@ -32,7 +32,7 @@ class PasswordPolicyTests(unittest.TestCase):
                 attrs = dict(attrs)
                 if tag == 'input' and attrs.get('name') in ('password','new_password','repeat') and attrs.get('autocomplete') == 'new-password':
                     fields[attrs['name']] = attrs
-        Inputs().feed((Path(__file__).parents[1]/'hemloc/static/index.html').read_text())
+        Inputs().feed((Path(__file__).parents[1]/'hemlock/static/index.html').read_text())
         self.assertEqual(set(fields), {'password','new_password','repeat'})
         for field in fields.values():
             self.assertEqual(int(field['minlength']), PASSWORD_MIN_LENGTH)

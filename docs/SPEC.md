@@ -1,14 +1,14 @@
-# Hemloc specification
+# Hemlock specification
 
 ## Scope and operating constraints
 
-Hemloc manages IP-prefix blocking through a separately managed GoBGP daemon on Debian 13. A single unprivileged Python 3.13 process contains FastAPI, embedded single-worker Uvicorn, local web assets, SQLite, background replication/IRR/reconciliation tasks and a maintenance CLI. A process lock prevents multiple owners per database, even when launched through Uvicorn directly. nginx, Apache, Redis, Celery and external databases are unnecessary. System packages/services, production routers, host networking, firewall and SSH must not be changed automatically. Announcements default off. Publishing requires explicit operator authorization.
+Hemlock manages IP-prefix blocking through a separately managed GoBGP daemon on Debian 13. A single unprivileged Python 3.13 process contains FastAPI, embedded single-worker Uvicorn, local web assets, SQLite, background replication/IRR/reconciliation tasks and a maintenance CLI. A process lock prevents multiple owners per database, even when launched through Uvicorn directly. nginx, Apache, Redis, Celery and external databases are unnecessary. System packages/services, production routers, host networking, firewall and SSH must not be changed automatically. Announcements default off. Publishing requires explicit operator authorization.
 
 ## Node configuration and lifecycle
 
 Local INI defines unique node_id, master/slave role, peer URL, web binding, HTTPS certificate/key and CA, database, GoBGP address, separate v4/v6 attributes, IRR server/sources/utility/timeouts, protection and proxy settings. These are never replicated. There is no automatic promotion. Master accepts changes; slave is read-only at all web/API/CLI mutation entry points, including passwords/users/ASN refresh. Both independently calculate and reconcile their own desired routes. Peer/web/IRR failure never clears working rules.
 
-Manual promotion: isolate old master first; set slave role to master and restart only Hemloc; keep GoBGP running. Promotion creates a fresh history identity, retaining accepted replicated data. Before returning old master, configure it as slave; it atomically adopts the new master's state without merging its old branch. Two reachable masters produce an explicit conflict and stop synchronization. A partition can conceal a second master; there is no quorum or fencing guarantee.
+Manual promotion: isolate old master first; set slave role to master and restart only Hemlock; keep GoBGP running. Promotion creates a fresh history identity, retaining accepted replicated data. Before returning old master, configure it as slave; it atomically adopts the new master's state without merging its old branch. Two reachable masters produce an explicit conflict and stop synchronization. A partition can conceal a second master; there is no quorum or fencing guarantee.
 
 ## Persistence and replication protocol
 
@@ -38,7 +38,7 @@ Separate daemon controlled only through loopback gRPC, never shell commands for 
 
 Users have admin or guest role and enabled flag. Argon2id per-password salt. Server-side random-token sessions store token digests locally, expiry and credential version. Cookies HttpOnly, SameSite=Strict, Secure under HTTPS; explicit initial HTTP mode uses non-Secure cookies and loopback binding by default. Require CSRF token for all browser mutations; enforce content type/origin, same-origin web assets, bounded inputs. Login throttling persists locally and ignores untrusted forwarded headers. Disabled user, password change/reset or role change invalidates sessions after replication by user version checks.
 
-Admin mutates and manages users on master; guest views. Authenticated users may change own password on master. No users mutate on slave. Root CLI: `hemloc user list`, `hemloc user create LOGIN --role admin`, `hemloc user reset-password LOGIN`; new passwords prompted twice, never argv. CLI shares application transactions/audit/journal and SQLite concurrency rules with running server. No permanent recovery password. CLI-created files must remain accessible to service user without widening permission.
+Admin mutates and manages users on master; guest views. Authenticated users may change own password on master. No users mutate on slave. Root CLI: `hemlock user list`, `hemlock user create LOGIN --role admin`, `hemlock user reset-password LOGIN`; new passwords prompted twice, never argv. CLI shares application transactions/audit/journal and SQLite concurrency rules with running server. No permanent recovery password. CLI-created files must remain accessible to service user without widening permission.
 
 ## UI, statuses and audit
 

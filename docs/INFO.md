@@ -21,7 +21,7 @@ An isolated test checks a nonempty divergent old branch in the backup, replaceme
 with master documents, integrity_check, local configuration and protection retention.
 
 **Required clarification to the supplied return procedure:** setting role=slave
-and restarting Hemloc does not stop the independent GoBGP service, clear its RIB,
+and restarting Hemlock does not stop the independent GoBGP service, clear its RIB,
 or gate route reconciliation until a new snapshot is received. Both roles work
 from their last saved data. Restoring full connectivity before synchronization
 can therefore export stale old routes. Info in all three languages now says to

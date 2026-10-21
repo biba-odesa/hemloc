@@ -13,12 +13,12 @@ AVAILABLE = all(importlib.util.find_spec(m) for m in ('fastapi', 'httpx', 'argon
 class WebTests(unittest.TestCase):
     def setUp(self):
         from fastapi.testclient import TestClient
-        from hemloc.auth import password_hash
-        from hemloc.config import Config
-        from hemloc.domain import Actor
-        from hemloc.service import Service
-        from hemloc.store import Store
-        from hemloc.web import create_app
+        from hemlock.auth import password_hash
+        from hemlock.config import Config
+        from hemlock.domain import Actor
+        from hemlock.service import Service
+        from hemlock.store import Store
+        from hemlock.web import create_app
         self.tmp = tempfile.TemporaryDirectory()
         self.cfg = Config(database=str(Path(self.tmp.name)/'a.sqlite'), tls=False, protected_asns=(), node_id='a', peer_node_id='b',metadata_enabled=False)
         self.store = Store(self.cfg)
@@ -85,8 +85,8 @@ class WebTests(unittest.TestCase):
 
     def test_admin_validation_does_not_feed_suspicion_but_anonymous_scan_does(self):
         from dataclasses import replace
-        from hemloc.notifications import Notifications
-        from hemloc.store import Store
+        from hemlock.notifications import Notifications
+        from hemlock.store import Store
         cfg=replace(self.cfg,notifications_enabled=True,suspicious_threshold=2)
         notifier=Notifications(Store(cfg))
         self.client.app.state.store.notifications=notifier
@@ -108,7 +108,7 @@ class WebTests(unittest.TestCase):
         self.assertFalse(response.json()['replicated'])
 
     def test_password_create_reset_change_policy_and_boundaries(self):
-        from hemloc.auth import password_verify
+        from hemlock.auth import password_verify
         headers = self.login()
         for value in ('abcd1','a'+'8'*1024):
             self.assertEqual(self.client.put('/api/users/numeric',json={'role':'guest','password':value},headers=headers).status_code,422)
@@ -146,8 +146,8 @@ class WebTests(unittest.TestCase):
     def test_read_only_presentation_endpoints_are_paged_and_do_not_modify_documents(self):
         headers=self.login()
         self.assertEqual(self.client.post('/api/rules/manual',json={'value':'192.0.2.1','comment':'first reason'},headers=headers).status_code,200)
-        from hemloc.service import Service
-        from hemloc.domain import Actor
+        from hemlock.service import Service
+        from hemlock.domain import Actor
         service=Service(self.store);actor=Actor('admin','admin')
         other=service.add_asn(actor,64501,'second reason')
         service.update_asn(actor,other['id'],['192.0.2.1/32'])
@@ -171,7 +171,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/routes?size=101').status_code,422)
 
     def test_argon2_and_http_cookie(self):
-        from hemloc.auth import password_verify
+        from hemlock.auth import password_verify
         self.login()
         self.assertTrue(password_verify(self.store.get('user', 'admin')['password_hash'], self.password))
         self.assertFalse(next(c for c in self.client.cookies.jar if c.name == 'hemloc_session').secure)
@@ -191,12 +191,12 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/rules/asn', json={'value':'64500'}, headers=headers).status_code, 403)
         self.assertEqual(self.client.put('/api/users/hacker', json={'role':'admin','password':self.password}, headers=headers).status_code, 403)
         self.assertEqual(self.client.get('/api/observation').status_code, 200)
-        self.assertNotIn('innerHTML', (Path(__file__).parents[1]/'hemloc/static/app.js').read_text())
+        self.assertNotIn('innerHTML', (Path(__file__).parents[1]/'hemlock/static/app.js').read_text())
 
     def test_slave_denies_all_mutation_paths_and_revokes_after_replication(self):
         from fastapi.testclient import TestClient
-        from hemloc.web import create_app
-        from hemloc.store import Store
+        from hemlock.web import create_app
+        from hemlock.store import Store
         slave_cfg = replace(self.cfg, database=str(Path(self.tmp.name)/'b.sqlite'), node_id='b', peer_node_id='a', role='slave')
         slave = Store(slave_cfg)
         slave.install_snapshot(self.store.snapshot())
@@ -217,7 +217,7 @@ class WebTests(unittest.TestCase):
 
     def test_failure_audit_covers_validation_csrf_denial_and_exceptions_once(self):
         from unittest.mock import patch
-        from hemloc.store import encode
+        from hemlock.store import encode
         headers = self.login()
         before = len(self.store.audit_history())
         response = self.client.post('/api/rules/manual',json={'value':'192.0.2.1'})

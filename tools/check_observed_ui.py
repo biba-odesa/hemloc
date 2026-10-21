@@ -11,12 +11,12 @@ import tempfile
 import threading
 import time
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from hemloc.auth import password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.web import create_app
+from hemlock.auth import password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.web import create_app
 from tools.check_gobgp import port,wait_for
 import uvicorn
 from playwright.sync_api import sync_playwright,expect
@@ -28,7 +28,7 @@ def main():
     args=parser.parse_args()
     rib=json.loads(Path(args.rib).read_text())
     assert rib['peers']
-    with tempfile.TemporaryDirectory(prefix='hemloc-observed-ui-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='hemlock-observed-ui-') as tmp:
         config=Config(database=str(Path(tmp)/'ui.sqlite'),tls=False,protected_asns=(),metadata_enabled=False)
         store=Store(config)
         password='a1'+secrets.token_urlsafe(24)

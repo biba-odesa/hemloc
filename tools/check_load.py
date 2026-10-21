@@ -13,14 +13,14 @@ import tempfile
 import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.check_gobgp import port, wait_for
-from hemloc.auth import password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.gobgp import GoBGP
-from hemloc.reconcile import Reconciler
-from hemloc.service import Service
-from hemloc.store import Store, encode
-from hemloc.web import create_app
+from hemlock.auth import password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.gobgp import GoBGP
+from hemlock.reconcile import Reconciler
+from hemlock.service import Service
+from hemlock.store import Store, encode
+from hemlock.web import create_app
 from fastapi.testclient import TestClient
 
 
@@ -40,7 +40,7 @@ def main():
         report['times_seconds'][name] = round(time.monotonic()-start,3)
         print(name,report['times_seconds'][name],file=sys.stderr,flush=True)
         return result
-    with tempfile.TemporaryDirectory(prefix='hemloc-load-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='hemlock-load-') as tmp:
         root = Path(tmp)
         gp,bp = port(),port()
         cfg = Config(database=str(root/'a.sqlite'),tls=False,node_id='a',peer_node_id='b',

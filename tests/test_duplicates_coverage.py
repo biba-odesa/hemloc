@@ -7,12 +7,12 @@ import sqlite3
 import tempfile
 import unittest
 import uuid
-from hemloc.config import Config
-from hemloc.coverage import index_for
-from hemloc.domain import Actor, Conflict, Duplicate, Invalid
-from hemloc.presentation import View, paginate
-from hemloc.service import Service
-from hemloc.store import Store, encode
+from hemlock.config import Config
+from hemlock.coverage import index_for
+from hemlock.domain import Actor, Conflict, Duplicate, Invalid
+from hemlock.presentation import View, paginate
+from hemlock.service import Service
+from hemlock.store import Store, encode
 
 ADMIN=Actor('operator','admin')
 

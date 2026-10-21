@@ -5,7 +5,7 @@ attributes, GoBGP sessions, protection semantics or replication ownership.
 
 ## Interface
 
-Anonymous visitors see only Hemloc, the sign-in form, a local decorative hemlock
+Anonymous visitors see only Hemlock, the sign-in form, a local decorative hemlock
 SVG and the theme switch. Navigation, header, metrics and workspace are hidden in
 the initial HTML as well as CSS. Startup checks only the public `/api/session`
 boolean; protected requests start after authentication is confirmed. Password

@@ -9,20 +9,20 @@ import threading
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import uvicorn
 from playwright.sync_api import sync_playwright,expect
-from hemloc.auth import Auth,password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.web import create_app
+from hemlock.auth import Auth,password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.web import create_app
 from tools.check_gobgp import port,wait_for
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--directory',required=True);args=parser.parse_args()
     output=Path(args.directory);output.mkdir(parents=True,exist_ok=False)
-    with tempfile.TemporaryDirectory(prefix='hemloc-account-ui-') as tmp:
-        cfg=Config(tls=False,database=str(Path(tmp)/'a.sqlite'),node_id='Hemloc-A',peer_node_id='Hemloc-B',protected_asns=(),protected_prefixes=(),metadata_enabled=False)
+    with tempfile.TemporaryDirectory(prefix='hemlock-account-ui-') as tmp:
+        cfg=Config(tls=False,database=str(Path(tmp)/'a.sqlite'),node_id='Hemlock-A',peer_node_id='Hemlock-B',protected_asns=(),protected_prefixes=(),metadata_enabled=False)
         store=Store(cfg);service=Service(store);actor=Actor('lab','admin');password='a1'+secrets.token_urlsafe(24)
         for login,role in [('admin','admin'),('guest','guest'),('empty','guest')]:service.save_user(actor,login,role=role,password_hash=password_hash(password))
         for i in reversed(range(1,62)):service.add_manual(actor,f'192.0.2.{i}',('Alpha' if i%2 else 'zulu')+f' {i:02}')
@@ -30,7 +30,7 @@ def main():
         asrule=service.add_asn(actor,64520,'ASN comment');service.update_asn(actor,asrule['id'],['198.51.100.0/24'],name='Example')
         for login in ('admin','guest'):
             for i in range(7):Auth(store,lambda h,p:True).login(login,'fixture',f'192.0.2.{100+i}')
-        slave=Store(replace(cfg,role='slave',node_id='Hemloc-B',peer_node_id='Hemloc-A',database=str(Path(tmp)/'b.sqlite')))
+        slave=Store(replace(cfg,role='slave',node_id='Hemlock-B',peer_node_id='Hemlock-A',database=str(Path(tmp)/'b.sqlite')))
         slave.install_snapshot(store.snapshot())
         for login in ('admin','guest'):Auth(slave,lambda h,p:True).login(login,'fixture','2001:db8::123')
         batch=slave.local_security_events();store.ingest_security(batch);slave.apply_events(store.events(slave.info()['history'],slave.info()['sequence']))
@@ -73,7 +73,7 @@ def main():
                 page.locator('.route-link').first.click();expect(page.locator('.expanded-row:not([hidden])')).to_contain_text('Blocked from IP networks list')
                 page.get_by_role('button',name='State help').click();expect(page.locator('.state-dialog')).to_contain_text('remote router');page.locator('.state-dialog').get_by_role('button',name='Close').click()
                 users();expect(page.locator('.own-account')).to_contain_text('admin');expect(page.locator('.own-login-history tbody tr')).to_have_count(5)
-                expect(page.locator('.own-login-history')).to_contain_text('Hemloc-B');expect(page.locator('.own-login-history')).to_contain_text('2001:db8::123');expect(page.locator('.own-login-history')).to_contain_text('127.0.0.1');expect(page.locator('.own-login-history')).to_contain_text('GMT+3')
+                expect(page.locator('.own-login-history')).to_contain_text('Hemlock-B');expect(page.locator('.own-login-history')).to_contain_text('2001:db8::123');expect(page.locator('.own-login-history')).to_contain_text('127.0.0.1');expect(page.locator('.own-login-history')).to_contain_text('GMT+3')
                 expect(page.locator('.own-login-history')).not_to_contain_text('203.0.113.99')
                 empty=page.locator('#content table').last.locator('tbody tr').filter(has=page.get_by_role('cell',name='empty',exact=True))
                 empty.get_by_role('button',name='Login history').click();expect(page.locator('.login-history-dialog')).to_contain_text('No successful logins recorded.');page.locator('.login-history-dialog').get_by_role('button',name='Close').click()
@@ -86,7 +86,7 @@ def main():
                 page.evaluate("action(()=>showLoginHistory('admin'))");expect(page.locator('.login-history-dialog .dialog-notice')).to_contain_text('own login history');page.locator('.login-history-dialog').get_by_role('button',name='Close').click()
                 page.locator('#password-button').click();expect(page.locator('#password-form input[name=current_password]')).to_be_visible();page.locator('[data-close=password-editor]').click()
                 page.screenshot(path=str(output/'guest.png'),full_page=True)
-                page.locator('#logout').click();expect(page.locator('#login-panel')).to_be_visible();login('guest',servers[1]);users();expect(page.locator('#password-button')).to_be_disabled();expect(page.locator('.own-account')).to_contain_text('master (Hemloc-A)');expect(page.locator('.own-login-history')).to_contain_text('Hemloc-B');expect(page.locator('.login-freshness')).to_contain_text('may lag')
+                page.locator('#logout').click();expect(page.locator('#login-panel')).to_be_visible();login('guest',servers[1]);users();expect(page.locator('#password-button')).to_be_disabled();expect(page.locator('.own-account')).to_contain_text('master (Hemlock-A)');expect(page.locator('.own-login-history')).to_contain_text('Hemlock-B');expect(page.locator('.login-freshness')).to_contain_text('may lag')
                 page.screenshot(path=str(output/'slave.png'),full_page=True)
                 page.locator('nav button[data-view=info]').click()
                 for language in ('EN','RU','UK'):

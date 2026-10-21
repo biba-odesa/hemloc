@@ -6,11 +6,11 @@ import sqlite3
 import tempfile
 import unittest
 
-from hemloc.config import Config, proxy_for
-from hemloc.domain import Actor, Conflict, Forbidden, Invalid, NeedSnapshot, Protection, prefix
-from hemloc.irr import IRR, IRRError, Metadata
-from hemloc.service import Service
-from hemloc.store import Store, digest, encode
+from hemlock.config import Config, proxy_for
+from hemlock.domain import Actor, Conflict, Forbidden, Invalid, NeedSnapshot, Protection, prefix
+from hemlock.irr import IRR, IRRError, Metadata
+from hemlock.service import Service
+from hemlock.store import Store, digest, encode
 
 ADMIN = Actor('alice', 'admin')
 GUEST = Actor('viewer', 'guest')

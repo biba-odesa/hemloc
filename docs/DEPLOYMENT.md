@@ -14,7 +14,7 @@ git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemloc.g
 cd hemloc
 ```
 
-Install a separately verified GoBGP binary using [BUILD.md](BUILD.md). Hemloc
+Install a separately verified GoBGP binary using [BUILD.md](BUILD.md). Hemlock
 requires the 4.10.0 API. The explicit internal-peer TTL patch is separate from
 application packaging; do not substitute a different major API.
 
@@ -30,7 +30,7 @@ sudo /opt/hemloc/.venv/bin/python -m pip install --require-hashes -r /opt/hemloc
 sudo /opt/hemloc/.venv/bin/python -m pip install --require-hashes -r /opt/hemloc/requirements-build.lock
 sudo /opt/hemloc/.venv/bin/python -m pip install --no-build-isolation --no-deps /opt/hemloc
 sudo /opt/hemloc/.venv/bin/python -m pip check
-sudo install -o root -g hemloc -m 0640 deploy/hemloc.example.ini /etc/hemloc/hemloc.ini
+sudo install -o root -g hemloc -m 0640 deploy/hemlock.example.ini /etc/hemloc/hemloc.ini
 sudo install -o root -g gobgp -m 0640 deploy/gobgpd.example.toml /etc/gobgp/gobgpd.toml
 sudoedit /etc/hemloc/hemloc.ini
 sudo chown root:hemloc /etc/hemloc/hemloc.ini
@@ -77,7 +77,7 @@ explicit v0.1.0 protection-transfer gap and bootstrap procedure.
 **Both roles:** install the units after reviewing their paths and permissions:
 
 ```bash
-sudo install -o root -g root -m 0644 deploy/hemloc.service /etc/systemd/system/hemloc.service
+sudo install -o root -g root -m 0644 deploy/hemlock.service /etc/systemd/system/hemloc.service
 sudo install -o root -g root -m 0644 deploy/gobgp.service /etc/systemd/system/gobgp.service
 sudo systemd-analyze verify /etc/systemd/system/hemloc.service /etc/systemd/system/gobgp.service
 sudo systemctl daemon-reload
@@ -91,7 +91,7 @@ Then enable autostart if appropriate. Never use multiple Uvicorn workers.
 The GoBGP unit runs unprivileged without CAP_NET_BIND_SERVICE. The shipped test
 configuration uses loopback BGP port 1179 and gRPC 50051; outbound-only managed
 setups can disable the BGP listener. The gRPC bind address is set by the unit's
-command line, not by Hemloc. Do not expose it on a nonlocal address.
+command line, not by Hemlock. Do not expose it on a nonlocal address.
 
 ## Source access and operator-selected announcement mode
 
@@ -99,7 +99,7 @@ HTTP_PROXY/HTTPS_PROXY do not provide WHOIS transport for bgpq4. IRR requires
 TCP/43 or a separately designed transport. Slaves receive blocked ASN sets from
 the master, but refresh local protection independently and retain its cache on
 IRR failure. After promotion, IRR is also needed for blocked ASN updates.
-A changed protected-ASN configuration must be reread by Hemloc and every new
+A changed protected-ASN configuration must be reread by Hemlock and every new
 ASN successfully initialized before taking a fresh protection export.
 
 After bootstrap, an operator may choose announcements=yes on the slave while

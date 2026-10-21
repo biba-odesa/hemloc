@@ -17,12 +17,12 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from hemloc.config import Config
-from hemloc.domain import Actor, Conflict
-from hemloc.gobgp import GoBGP, nlri, unicast_attributes
-from hemloc.reconcile import Reconciler
-from hemloc.service import Service
-from hemloc.store import Store
+from hemlock.config import Config
+from hemlock.domain import Actor, Conflict
+from hemlock.gobgp import GoBGP, nlri, unicast_attributes
+from hemlock.reconcile import Reconciler
+from hemlock.service import Service
+from hemlock.store import Store
 
 
 def port():
@@ -65,7 +65,7 @@ def main():
     grpc_port, bgp_port = port(), port()
     while grpc_port == bgp_port:
         bgp_port = port()
-    with tempfile.TemporaryDirectory(prefix='hemloc-gobgp-') as temporary:
+    with tempfile.TemporaryDirectory(prefix='hemlock-gobgp-') as temporary:
         directory = Path(temporary)
         daemon_config = directory/'gobgpd.toml'
         daemon_config.write_text(f'[global.config]\nas = 64512\nrouter-id = "127.0.0.1"\nport = {bgp_port}\nlocal-address-list = ["127.0.0.1"]\n')
@@ -177,7 +177,7 @@ def main():
             assert len(remaining) == 1 and remaining[0].owner == foreign.config.owner
             foreign.delete(remaining[0])
             # Exercise the explicit maintenance drain against real addressed paths.
-            from hemloc.maintenance import withdraw_owned
+            from hemlock.maintenance import withdraw_owned
             adapter.add('192.0.2.253/32', ('192.0.2.254',200,('64512:666',),marker))
             disabled = Store(replace(cfg, announcements=False), activate=False)
             assert withdraw_owned(disabled)['owned'] == 1
@@ -185,7 +185,7 @@ def main():
                 cli_config = directory/'maintenance.ini'
                 cli_config.write_text(f'[node]\ndatabase={cfg.database}\n[web]\ntls=no\n[gobgp]\nannouncements=no\ngrpc_target={cfg.grpc_target}\nowner={",".join(map(str,marker))}\n')
                 import json
-                command = ['sudo','-n',sys.executable,'-m','hemloc','--config',str(cli_config),'routes','withdraw-owned']
+                command = ['sudo','-n',sys.executable,'-m','hemlock','--config',str(cli_config),'routes','withdraw-owned']
                 preview = json.loads(subprocess.check_output(command,text=True))
                 assert preview['mode'] == 'dry-run' and preview['owned'] == 1
                 executed = json.loads(subprocess.check_output(command+['--execute'],text=True))
@@ -195,7 +195,7 @@ def main():
             assert withdraw_owned(disabled, execute=True)['withdrawn'] == 0
             assert any(p.key == foreign_key for p in adapter.paths())
             if args.suite:
-                environment = dict(os.environ,HEMLOC_LIVE_GOBGP=cfg.grpc_target)
+                environment = dict(os.environ,HEMLOCK_LIVE_GOBGP=cfg.grpc_target)
                 subprocess.run([sys.executable,'-W','error::ResourceWarning','-m','unittest','discover','-s','tests','-v'],
                                env=environment,check=True)
             print('GoBGP 4.10.0 checks passed: IPv4/IPv6 gRPC attributes, foreign ownership, repair, crash recovery, daemon restart, protection withdrawal and addressed path deletion.')

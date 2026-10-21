@@ -1,3 +1,2 @@
-"""Hemloc prefix blocking controller."""
-
-__version__ = "0.1.0"
+"""Legacy import compatibility; the canonical package is hemlock."""
+from hemlock import __version__

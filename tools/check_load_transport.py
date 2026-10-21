@@ -16,12 +16,12 @@ import threading
 import time
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import uvicorn
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.replication import PeerTransport
-from hemloc.service import Service
-from hemloc.store import Store, digest
-from hemloc.web import create_app
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.replication import PeerTransport
+from hemlock.service import Service
+from hemlock.store import Store, digest
+from hemlock.web import create_app
 from tools.check_gobgp import port, wait_for
 
 parser=argparse.ArgumentParser()
@@ -31,9 +31,9 @@ args=parser.parse_args()
 if os.geteuid() == 0:
     raise SystemExit("Run isolated test processes as an unprivileged user")
 database=Path(args.database).resolve()
-if database.parent.parent != Path('/tmp') or not database.parent.name.startswith('hemloc-load-') or database.name != 'a.sqlite':
+if database.parent.parent != Path('/tmp') or not database.parent.name.startswith('hemlock-load-') or database.name != 'a.sqlite':
     raise SystemExit('Only an active check_load.py temporary database is accepted')
-with tempfile.TemporaryDirectory(prefix='hemloc-load-https-') as tmp:
+with tempfile.TemporaryDirectory(prefix='hemlock-load-https-') as tmp:
     root=Path(tmp)
     cert,key=root/'cert.crt',root/'cert.key'
     subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(key),'-out',str(cert),

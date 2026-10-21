@@ -59,9 +59,9 @@ output checksums. No binary is added to Git.
 Before installing a newly built daemon, test its gRPC API and TTL behavior against
 isolated loopback peers using documentation prefixes. Installation/replacement
 and any daemon restart are separate operator actions. In particular, never replace
-a running GoBGP binary just to update Hemloc or its rules. A second node follows
+a running GoBGP binary just to update Hemlock or its rules. A second node follows
 INSTALL_B.md for the application and this separate build procedure for GoBGP.
 
 GoBGP's unmodified Apache-2.0 license accompanies the patch. Preserve its license
 and the applicable transitive-module notices if redistributing a built binary;
-THIRD_PARTY.md distinguishes those components from Hemloc's MIT license.
+THIRD_PARTY.md distinguishes those components from Hemlock's MIT license.

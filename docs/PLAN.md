@@ -395,7 +395,7 @@ retention and notifications disabled until the documented validation gates pass.
 
 ## Optional privileged HTTPS port in the service template
 
-The tracked Hemloc unit documents two commented opt-in directives:
+The tracked Hemlock unit documents two commented opt-in directives:
 CapabilityBoundingSet=CAP_NET_BIND_SERVICE and
 AmbientCapabilities=CAP_NET_BIND_SERVICE. Uncomment both after the existing empty
 capability reset to bind ports below 1024 as the unprivileged service user.
@@ -404,3 +404,31 @@ capabilities. No sysctl, executable setcap, production unit or runtime changes a
 made by this repository update. When changing the actual web port, the operator
 must also update the other node's peer_url and verify replication independently.
 Static unit verification covers both the default and uncommented opt-in variant.
+
+## Hemlock name correction and synchronization color
+
+Canonical distribution/package/CLI and all product-facing text are Hemlock 0.2.0.
+Legacy imports are exact module aliases. Active paths, service/user, node IDs,
+route owner, DB/protection, session cookie/theme preference and replication header
+remain unchanged for the rolling upgrade. Canonical deploy templates are added;
+legacy template filenames remain available. Immutable release history is retained.
+See RENAMING.md for the compatibility boundary and old-distribution uninstall.
+
+Synchronization text is green only for a fresh successful In sync / zero-lag
+observation. Catching up, unknown/unavailable/stale, unconfigured and conflict are
+red. Status text/lag remain visible in both themes; no replication logic changed.
+
+Checks: 133 tests discovered, 132 passed and one opt-in live target skipped;
+legacy/canonical import identity and both module launchers; old v0.1.0 Store
+compatibility; full retention/outbox/snapshot replay suite; real two-node verified
+HTTPS; actual pre-rename slave source rolling compatibility; Chromium corrected
+login/title/sidebar/peer name and green/red cases in both themes; separate isolated
+GoBGP lifecycle/IPv4/IPv6/ownership/protection check. Only test data is mutated.
+A clean exported wheel and isolated installed launchers are checked before A is
+updated. Source and rollback wheels exclude untracked/local runtime files.
+
+Operator authorizes installing A and restarting only Hemlock, preserving the
+active unit/drop-in and all local configuration. Prepare rollback and a SQLite
+API backup, migrate Python distributions, verify canonical/legacy launchers,
+HTTPS and replica status without creating a production login. GoBGP is untouched.
+B is not contacted; provide a manual same-commit upgrade instruction after push.

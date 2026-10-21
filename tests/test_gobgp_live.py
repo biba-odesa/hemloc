@@ -6,10 +6,10 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from hemloc.config import Config
-from hemloc.gobgp import GoBGP
+from hemlock.config import Config
+from hemlock.gobgp import GoBGP
 
-TARGET = os.environ.get('HEMLOC_LIVE_GOBGP', '')
+TARGET = os.environ.get('HEMLOCK_LIVE_GOBGP', os.environ.get('HEMLOC_LIVE_GOBGP', ''))
 
 
 @unittest.skipUnless(TARGET, 'Explicit isolated GoBGP target not provided')

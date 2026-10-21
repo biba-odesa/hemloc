@@ -1,6 +1,6 @@
-# Hemloc
+# Hemlock
 
-Hemloc manages IP-address and network blocking through GoBGP on Debian 13.
+Hemlock manages IP-address and network blocking through GoBGP on Debian 13.
 It runs as one unprivileged Python application: FastAPI, embedded HTTPS Uvicorn,
 SQLite, local web assets, background tasks and a maintenance CLI. No reverse
 proxy, external database or task queue is required.
@@ -80,7 +80,7 @@ sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini user reset-pas
 
 ## License
 
-Hemloc is MIT licensed, copyright biba-odesa. See [LICENSE](LICENSE).
+Hemlock is MIT licensed, copyright biba-odesa. See [LICENSE](LICENSE).
 The GoBGP TTL patch includes upstream Apache-2.0 material; its license and
 attribution remain in [deploy/patches](deploy/patches/README.md). Dependencies
 retain their respective licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).
@@ -97,3 +97,9 @@ list accepts comma/newline batches with independent commits and explicit partial
 results; [batch input and limits](docs/BATCH_INPUT.md) documents retry, audit and
 single-message notification behavior. The updated light theme uses blue surfaces;
 the dark palette is retained.
+
+The corrected name is **Hemlock** (Python package/CLI `hemlock`, version 0.2.0).
+Existing active `hemloc` directories, user/service, CLI alias and wire identities
+are retained for safe upgrades. See [compatible rename](docs/RENAMING.md); do not
+mass-rename an existing deployment or use the historical v0.1.0 tag for this update.
+Synchronization is green only for fresh **In sync** with zero lag, otherwise red.

@@ -8,19 +8,19 @@ import threading
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import uvicorn
 from playwright.sync_api import sync_playwright,expect
-from hemloc.auth import password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.web import create_app
+from hemlock.auth import password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.web import create_app
 from tools.check_gobgp import port,wait_for
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--directory',required=True);args=parser.parse_args()
     output=Path(args.directory);output.mkdir(parents=True,exist_ok=False)
-    with tempfile.TemporaryDirectory(prefix='hemloc-rules-ui-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='hemlock-rules-ui-') as tmp:
         cfg=Config(database=str(Path(tmp)/'a.sqlite'),tls=False,protected_asns=(),protected_prefixes=(),metadata_enabled=False)
         store=Store(cfg);service=Service(store);actor=Actor('lab','admin');password='a1'+secrets.token_urlsafe(24)
         service.save_user(actor,'admin',role='admin',password_hash=password_hash(password))

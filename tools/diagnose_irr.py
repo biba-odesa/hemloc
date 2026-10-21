@@ -10,10 +10,10 @@ import sqlite3
 import time
 from unittest.mock import patch
 
-from hemloc.config import load
-from hemloc.domain import asn
-from hemloc.irr import IRR, bounded_process
-import hemloc.irr as installed_irr
+from hemlock.config import load
+from hemlock.domain import asn
+from hemlock.irr import IRR, bounded_process
+import hemlock.irr as installed_irr
 
 
 def probe(config, number):
@@ -47,7 +47,7 @@ def probe(config, number):
         try:
             # Run the actual installed bounded_process, including its limits,
             # proxy removal, selector loop, stderr checks and cleanup.
-            with patch('hemloc.irr.subprocess.Popen', side_effect=spawn), patch('hemloc.irr.os.read', side_effect=read):
+            with patch('hemlock.irr.subprocess.Popen', side_effect=spawn), patch('hemlock.irr.os.read', side_effect=read):
                 data = bounded_process(args, timeout)
             last['stdout_bytes'] = len(data)
             return data

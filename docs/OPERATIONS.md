@@ -10,7 +10,7 @@
 
 ```bash
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out ca.key
-openssl req -x509 -new -key ca.key -sha256 -days 3650 -subj /CN=Hemloc-Local-CA -out ca.crt -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign
+openssl req -x509 -new -key ca.key -sha256 -days 3650 -subj /CN=Hemlock-Local-CA -out ca.crt -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out block-a.key
 openssl req -new -key block-a.key -subj /CN=block-a -out block-a.csr -addext subjectAltName=DNS:block-a
 ```
@@ -33,7 +33,7 @@ openssl verify -CAfile ca.crt -verify_hostname block-a block-a.crt
 
 Аналогично block-b. Если peer_url содержит IP, в сертификате нужен соответствующий **IP SAN**; CN недостаточно. Не добавлять рабочие IP в пример автоматически. В INI задать `tls=yes`, `cert`, `key`, `ca`, HTTPS peer_url. Проверка сертификата репликации не отключается. Приватный ключ CA не хранить на рабочих узлах; leaf-ключи и token локальные, не реплицируются.
 
-Доверие браузера: импортировать только `ca.crt` в доверенные CA браузера/клиентской ОС. Установка доверия Debian через `/usr/local/share/ca-certificates/hemloc-ca.crt` и `update-ca-certificates` меняет системное хранилище: выполнять только после отдельного согласования. Приложению достаточно явного пути `ca`, без системных изменений. Планировать обновление сертификатов до истечения и перезапускать только Hemloc для перечитывания файлов.
+Доверие браузера: импортировать только `ca.crt` в доверенные CA браузера/клиентской ОС. Установка доверия Debian через `/usr/local/share/ca-certificates/hemloc-ca.crt` и `update-ca-certificates` меняет системное хранилище: выполнять только после отдельного согласования. Приложению достаточно явного пути `ca`, без системных изменений. Планировать обновление сертификатов до истечения и перезапускать только Hemlock для перечитывания файлов.
 
 ## Подготовка двух экземпляров
 
@@ -46,13 +46,13 @@ openssl verify -CAfile ca.crt -verify_hostname block-a block-a.crt
 
 Первый скрипт создаёт только локальные файлы в новом каталоге; сертификаты с SAN `block-a`, `block-b`, `localhost` и `127.0.0.1`, CA, два уникальных конфига, общий random token. Не перезаписывает существующий каталог. Приватные артефакты находятся под игнорируемым `var/` и не попадают в Git. Порты по умолчанию 18443 и 18444, разные SQLite. Нет настоящих BGP-соседей; оба `announcements=no`.
 
-Второй скрипт — **явно запускаемый оператором тест**: предлагает пароль дважды, создаёт тестовых пользователей, запускает два непривилегированных дочерних процесса Hemloc, проверяет HTTPS/репликацию/API, останавливает их, имитирует promotion и возврат старого узла и завершает процессы в finally. Без --gobgp-binary не запускает GoBGP. Systemd, сеть и firewall не меняет. Реальный прогон двух HTTPS-узлов выполнен, в том числе с неработающим proxy в INI и env. По завершении изучить созданные log-файлы и отчёт; тестовый пароль нигде не сохраняется открытым.
+Второй скрипт — **явно запускаемый оператором тест**: предлагает пароль дважды, создаёт тестовых пользователей, запускает два непривилегированных дочерних процесса Hemlock, проверяет HTTPS/репликацию/API, останавливает их, имитирует promotion и возврат старого узла и завершает процессы в finally. Без --gobgp-binary не запускает GoBGP. Systemd, сеть и firewall не меняет. Реальный прогон двух HTTPS-узлов выполнен, в том числе с неработающим proxy в INI и env. По завершении изучить созданные log-файлы и отчёт; тестовый пароль нигде не сохраняется открытым.
 
 Для ручного запуска после подготовки пользователей в двух отдельных терминалах:
 
 ```bash
-.venv/bin/hemloc --config var/lab/a.ini serve
-.venv/bin/hemloc --config var/lab/b.ini serve
+.venv/bin/hemlock --config var/lab/a.ini serve
+.venv/bin/hemlock --config var/lab/b.ini serve
 ```
 
 Первого пользователя на стенде создаёт check_lab.py; для CLI от root использовать владельца БД и процедуру README. Браузерные адреса: `https://127.0.0.1:18443` и `https://127.0.0.1:18444`. Для браузера предварительно доверить тестовую CA только в тестовом профиле.
@@ -72,7 +72,7 @@ var/toolchains/gobgp-4.10.0/gobgpd -f deploy/gobgpd.example.toml --api-hosts=127
 Для адаптерного теста после отдельного запуска пустого демона:
 
 ```bash
-HEMLOC_LIVE_GOBGP=127.0.0.1:50051 .venv/bin/python -m unittest discover -s tests -p test_gobgp_live.py -v
+HEMLOCK_LIVE_GOBGP=127.0.0.1:50051 .venv/bin/python -m unittest discover -s tests -p test_gobgp_live.py -v
 ```
 
 Тест требует нулевое число BGP-соседей, использует отдельную тестовую ownership community и TEST-NET/IPv6 documentation prefixes, удаляет только наблюдаемые локальные пути с его marker и path identifier; UUID из ListPath не ожидается. Он не запускается без явного env-параметра. Не направлять его к рабочему демону. Projection сверена с официальными дескрипторами, реальная совместимость с 4.10.0 проверена. Само наличие локального пути не означает его принятия соседом.
@@ -96,7 +96,7 @@ HEMLOC_LIVE_GOBGP=127.0.0.1:50051 .venv/bin/python -m unittest discover -s tests
 
 Каждый каталог должен быть новым. --cli использует обычный sudo и настоящий PTY для интерактивного reset-password, проверяет отказ старого пароля, новые логины и отзыв сессий обоих узлов; пароль не передаётся в argv. Для автоматического сценария нужен заранее доступный sudo -n; при его отсутствии выполнить CLI-проверку вручную в терминале.
 
-В режиме --gobgp-binary изменяются **только свежие lab INI**: анонсы включаются для двух создаваемых скриптом loopback-daemon с разными портами, а IPv6 next-hop задаётся явно из documentation prefix. Ни один daemon не имеет соседей. Проверяются две независимые фоновые сверки, локальные protection-расхождения slave без потери исходных данных, восстановление RIB после перезапуска slave GoBGP, работа slave при остановленном master, promotion и возврат старого master. PID обоих daemon сохраняются при переключении роли Hemloc. После проверки все дочерние процессы останавливаются; lab INI не применять к рабочему daemon.
+В режиме --gobgp-binary изменяются **только свежие lab INI**: анонсы включаются для двух создаваемых скриптом loopback-daemon с разными портами, а IPv6 next-hop задаётся явно из documentation prefix. Ни один daemon не имеет соседей. Проверяются две независимые фоновые сверки, локальные protection-расхождения slave без потери исходных данных, восстановление RIB после перезапуска slave GoBGP, работа slave при остановленном master, promotion и возврат старого master. PID обоих daemon сохраняются при переключении роли Hemlock. После проверки все дочерние процессы останавливаются; lab INI не применять к рабочему daemon.
 
 Обычный check_gobgp дополнительно проверяет два разных owner/path ID на одном NLRI: адресный отзыв одного сохраняет второй. Он также проверяет восстановление после успешного AddPath с потерянным подтверждением и нового экземпляра адаптера. Proxy env намеренно указывает на недоступный loopback-порт: gRPC остаётся прямым.
 
@@ -109,12 +109,12 @@ HEMLOC_LIVE_GOBGP=127.0.0.1:50051 .venv/bin/python -m unittest discover -s tests
 `announcements=no` — **заморозка gRPC-записей**, включая DeletePath. Она не
 отзывает старые маршруты и не останавливает их экспорт уже работающим GoBGP.
 Desired state, правила и наблюдение продолжают работать. Надпись в вебе явно
-напоминает, что старые маршруты не отозваны. Остановка Hemloc тоже не очищает
+напоминает, что старые маршруты не отозваны. Остановка Hemlock тоже не очищает
 GoBGP. Переход обратно в yes вновь приводит локальную RIB к desired state.
 
 Для контролируемого отзыва **всех только собственных путей** без удаления правил:
 
-1. Установить `announcements=no` в локальном INI и остановить **только Hemloc**.
+1. Установить `announcements=no` в локальном INI и остановить **только Hemlock**.
    GoBGP оставить работающим. Это отдельное эксплуатационное действие; в этой
    сессии постоянные службы не останавливались и не запускались.
 2. Не менять ownership marker. CLI использует именно marker текущей установки

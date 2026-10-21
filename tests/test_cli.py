@@ -9,12 +9,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from hemloc.auth import Auth
-from hemloc.cli import main
-from hemloc.config import Config
-from hemloc.domain import Actor, Conflict, Invalid
-from hemloc.service import Service
-from hemloc.store import Store
+from hemlock.auth import Auth
+from hemlock.cli import main
+from hemlock.config import Config
+from hemlock.domain import Actor, Conflict, Invalid
+from hemlock.service import Service
+from hemlock.store import Store
 
 HASH = '$argon2id$v=19$m=65536,t=3,p=4$fake$fake'
 ADMIN = Actor('admin','admin')
@@ -34,13 +34,13 @@ class CLITests(unittest.TestCase):
     def invoke(self, arguments, root=True, config=None, passwords=('new-test-password1','new-test-password1'), hasher=None):
         output, error = io.StringIO(), io.StringIO()
         with ExitStack() as stack:
-            stack.enter_context(patch('hemloc.cli.load',return_value=config or self.cfg))
-            stack.enter_context(patch('hemloc.cli.os.geteuid',return_value=0 if root else 1000))
+            stack.enter_context(patch('hemlock.cli.load',return_value=config or self.cfg))
+            stack.enter_context(patch('hemlock.cli.os.geteuid',return_value=0 if root else 1000))
             for method in ('setgroups','setgid','setuid'):
-                stack.enter_context(patch('hemloc.cli.os.'+method))
-            prompt = stack.enter_context(patch('hemloc.cli.getpass.getpass',side_effect=passwords))
+                stack.enter_context(patch('hemlock.cli.os.'+method))
+            prompt = stack.enter_context(patch('hemlock.cli.getpass.getpass',side_effect=passwords))
             if hasher is not None:
-                stack.enter_context(patch('hemloc.cli.password_hash',side_effect=hasher))
+                stack.enter_context(patch('hemlock.cli.password_hash',side_effect=hasher))
             stack.enter_context(redirect_stdout(output))
             stack.enter_context(redirect_stderr(error))
             result = main(arguments)
@@ -48,7 +48,7 @@ class CLITests(unittest.TestCase):
 
     def test_audit_preview_export_and_exact_plan_prune(self):
         import json,time,uuid
-        from hemloc.store import encode
+        from hemlock.store import encode
         event={'id':str(uuid.uuid4()),'at':time.time()-10*86400,'node':'a','actor':'anonymous','action':'http.request','object':'request','before':None,'after':None,'result':'invalid'}
         with self.store.transaction() as db:self.store.operation(db,{'kind':'audit','id':event['id'],'doc':event})
         plan=str(Path(self.tmp.name)/'plan.json');output=str(Path(self.tmp.name)/'export.jsonl')
@@ -60,7 +60,7 @@ class CLITests(unittest.TestCase):
         self.assertEqual(self.invoke(['audit','prune','--plan',plan,'--execute'])[0],0);self.assertIsNone(self.store.get('audit',event['id']))
 
     def test_password_create_reset_lengths_and_composition(self):
-        from hemloc.auth import password_verify
+        from hemlock.auth import password_verify
         for command, password in [(['user','create','policy-user','--role','admin'],'abcde1'),
                                   (['user','reset-password','policy-user'],'a'+'9'*1023)]:
             result, _, _, prompts = self.invoke(command,passwords=(password,password))
@@ -88,7 +88,7 @@ class CLITests(unittest.TestCase):
         result,output,error,prompts = self.invoke(['user','reset-password','admin'],hasher=lambda p:HASH)
         self.assertEqual((result,prompts),(0,2))
         self.assertEqual(self.store.get('user','admin')['version'],old_version+1)
-        from hemloc.domain import Forbidden
+        from hemlock.domain import Forbidden
         with self.assertRaises(Forbidden):
             auth.session(token)
         self.assertNotIn(HASH,output+error)
@@ -123,7 +123,7 @@ class CLITests(unittest.TestCase):
 
     @unittest.skipUnless(importlib.util.find_spec('argon2'),'Argon2 is unavailable; UID switching remains mocked in this test')
     def test_cli_reset_with_real_argon2(self):
-        from hemloc.auth import password_verify
+        from hemlock.auth import password_verify
         result,_,_,prompts = self.invoke(['user','reset-password','admin'])
         self.assertEqual((result,prompts),(0,2))
         encoded = self.store.get('user','admin')['password_hash']

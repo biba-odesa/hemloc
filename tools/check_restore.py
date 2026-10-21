@@ -7,13 +7,13 @@ import sqlite3
 import sys
 import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from hemloc.auth import password_hash, password_verify
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.service import Service
-from hemloc.store import Store
+from hemlock.auth import password_hash, password_verify
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.service import Service
+from hemlock.store import Store
 
-with tempfile.TemporaryDirectory(prefix='hemloc-restore-') as tmp:
+with tempfile.TemporaryDirectory(prefix='hemlock-restore-') as tmp:
     root = Path(tmp)
     cfg = Config(database=str(root/'master.sqlite'),tls=False,node_id='a',peer_node_id='b')
     master = Store(cfg)
@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix='hemloc-restore-') as tmp:
         store.backup(backup)
         destination = root/f'{name}-restored'
         destination.mkdir()
-        restored_path = destination/'hemloc.sqlite'
+        restored_path = destination/'hemlock.sqlite'
         # The source is a completed online backup, never an open live DB file.
         shutil.copyfile(backup,restored_path)
         restored = Store(replace(config,database=str(restored_path)),activate=False)

@@ -9,12 +9,12 @@ import time
 import unittest
 from unittest.mock import patch
 
-from hemloc.auth import Auth
-from hemloc.config import Config
-from hemloc.domain import Actor, Forbidden
-from hemloc.notifications import Notifications
-from hemloc.service import Service
-from hemloc.store import Store, encode
+from hemlock.auth import Auth
+from hemlock.config import Config
+from hemlock.domain import Actor, Forbidden
+from hemlock.notifications import Notifications
+from hemlock.service import Service
+from hemlock.store import Store, encode
 
 
 class NotificationTests(unittest.TestCase):
@@ -35,7 +35,7 @@ class NotificationTests(unittest.TestCase):
 
     def test_unicode_quotes_multiline_exact_stdin_no_shell_or_argv(self):
         self.handler_code(f'import sys,json\nfrom pathlib import Path\nassert len(sys.argv)==1\nPath({str(self.capture)!r}).write_bytes(sys.stdin.buffer.read())\n')
-        n=self.notifier();message={'subject':'Hemloc «тест»', 'body':'Рядок 1\n"quote"\n$(touch /never-run); `false`'}
+        n=self.notifier();message={'subject':'Hemlock «тест»', 'body':'Рядок 1\n"quote"\n$(touch /never-run); `false`'}
         n.send(message)
         self.assertEqual(json.loads(self.capture.read_text()),message)
         self.assertEqual(self.store.audit_history(),[])

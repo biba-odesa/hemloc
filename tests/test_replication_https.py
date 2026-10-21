@@ -13,11 +13,11 @@ import threading
 import unittest
 from urllib.parse import parse_qs,urlsplit
 
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.replication import PeerTransport, PeerUnavailable, Replicator
-from hemloc.service import Service
-from hemloc.store import Store,encode
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.replication import PeerTransport, PeerUnavailable, Replicator
+from hemlock.service import Service
+from hemlock.store import Store,encode
 
 
 @unittest.skipUnless(shutil.which('openssl'),'OpenSSL is unavailable')

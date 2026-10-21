@@ -41,7 +41,7 @@ The distribution contains the application, local assets, pinned hash locks,
 config templates, units, install/backup/failover/admin recovery documentation,
 tests and the upstream-source TTL patch. Source-package content and independent
 Python/Go builds are checked by build_release.py. Binaries, databases, caches,
-private keys and backups stay outside ordinary Git. Hemloc is MIT licensed,
+private keys and backups stay outside ordinary Git. Hemlock is MIT licensed,
 copyright biba-odesa. GoBGP and other components retain their notices.
 
 ## Publishing

@@ -16,7 +16,7 @@ def inspect_artifact(name, data):
     problems = []
     if (any(part in RUNTIME_DIRECTORIES or part.endswith('.egg-info') for part in path.parts) or
         name.endswith(RUNTIME_SUFFIXES) or re.search(r'\.(?:sqlite|db)(?:$|[.-])', name) or
-        '.backup' in path.name or path.name in ('.env', 'hemloc.ini', '.coverage')):
+        '.backup' in path.name or path.name in ('.env', 'hemlock.ini', '.coverage')):
         problems.append('runtime-or-private-artifact')
     if PRIVATE_KEY.search(data):
         problems.append('private-key-content')

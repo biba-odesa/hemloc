@@ -23,11 +23,11 @@ from urllib.request import HTTPCookieProcessor, HTTPSHandler, ProxyHandler, Requ
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from hemloc.auth import password_hash
-from hemloc.config import load
-from hemloc.domain import Actor
-from hemloc.service import Service
-from hemloc.store import Store
+from hemlock.auth import password_hash
+from hemlock.config import load
+from hemlock.domain import Actor
+from hemlock.service import Service
+from hemlock.store import Store
 
 
 class Client:
@@ -90,7 +90,7 @@ def main():
             raise SystemExit('Use a fresh prepared lab; databases must not already exist')
     daemon_specs,daemon_processes,daemon_logs,adapters={},{},{},{}
     if args.gobgp_binary:
-        from hemloc.gobgp import GoBGP
+        from hemlock.gobgp import GoBGP
         from tools.check_gobgp import port
         binary=str(Path(args.gobgp_binary).resolve())
         assert 'version 4.10.0' in subprocess.check_output([binary,'--version'],text=True)
@@ -135,7 +135,7 @@ def main():
         for key in ('HTTP_PROXY','HTTPS_PROXY','ALL_PROXY','http_proxy','https_proxy','all_proxy'):
             environment[key]='http://127.0.0.1:9'
         environment.update(NO_PROXY='',no_proxy='')
-        processes[name] = subprocess.Popen([sys.executable, '-m', 'hemloc', '--config', str(paths[name]), 'serve'],
+        processes[name] = subprocess.Popen([sys.executable, '-m', 'hemlock', '--config', str(paths[name]), 'serve'],
                                           cwd=Path(__file__).resolve().parents[1], stdout=logs[name], stderr=logs[name],env=environment)
     def stop(name):
         process = processes.pop(name, None)
@@ -248,7 +248,7 @@ def main():
             assert exc.code == 403
         if args.cli:
             import pexpect
-            executable = str(Path(sys.executable).parent/'hemloc')
+            executable = str(Path(sys.executable).parent/'hemlock')
             listing = subprocess.check_output(['sudo','-n',executable,'--config',str(paths['a']),'user','list'],text=True)
             assert 'lab-admin' in listing and '$argon2' not in listing
             changed_password = 'a1'+secrets.token_urlsafe(24)

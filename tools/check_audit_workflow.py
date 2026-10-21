@@ -13,21 +13,21 @@ import uuid
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import uvicorn
 from playwright.sync_api import sync_playwright, expect
-from hemloc.auth import password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor, NeedSnapshot
-from hemloc.replication import PeerTransport, Replicator
-from hemloc.retention import execute, preview
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.web import create_app
+from hemlock.auth import password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor, NeedSnapshot
+from hemlock.replication import PeerTransport, Replicator
+from hemlock.retention import execute, preview
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.web import create_app
 from tools.check_gobgp import port, wait_for
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--directory',required=True);args=parser.parse_args()
     output=Path(args.directory);output.mkdir(parents=True,exist_ok=False)
-    with tempfile.TemporaryDirectory(prefix='hemloc-audit-workflow-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='hemlock-audit-workflow-') as tmp:
         root=Path(tmp);p1,p2=port(),port()
         subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',str(root/'tls.key'),'-out',str(root/'tls.crt'),'-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         (root/'peer.token').write_text(secrets.token_urlsafe(48))

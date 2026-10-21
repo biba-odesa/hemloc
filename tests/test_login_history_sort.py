@@ -6,13 +6,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
-from hemloc.auth import Auth,password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor,Forbidden,Invalid
-from hemloc.presentation import View
-from hemloc.service import Service
-from hemloc.store import Store,encode
-from hemloc.web import create_app
+from hemlock.auth import Auth,password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor,Forbidden,Invalid
+from hemlock.presentation import View
+from hemlock.service import Service
+from hemlock.store import Store,encode
+from hemlock.web import create_app
 
 ADMIN=Actor('admin','admin')
 
@@ -31,11 +31,11 @@ class LoginHistoryTests(unittest.TestCase):
     def test_five_successes_ip_node_union_restart_replay_snapshot_no_sessions(self):
         auth=Auth(self.store,lambda h,p:p=='good')
         for number in range(7):
-            with patch('hemloc.store.time.time',return_value=100+number):auth.login('guest','good',f'192.0.2.{number+1}')
+            with patch('hemlock.store.time.time',return_value=100+number):auth.login('guest','good',f'192.0.2.{number+1}')
         with self.assertRaises(Forbidden):auth.login('guest','bad','192.0.2.99')
         self.assertEqual([e['ip'] for e in self.store.successful_logins('guest')],['192.0.2.7','192.0.2.6','192.0.2.5','192.0.2.4','192.0.2.3'])
         self.slave.install_snapshot(self.store.snapshot())
-        with patch('hemloc.store.time.time',return_value=110):
+        with patch('hemlock.store.time.time',return_value=110):
             token,_=Auth(self.slave,lambda h,p:True).login('guest','unused','2001:0DB8:0:0::1')
         expected={'at':110,'node':'b','ip':'2001:db8::1'}
         self.assertEqual(self.slave.successful_logins('guest')[0],expected)

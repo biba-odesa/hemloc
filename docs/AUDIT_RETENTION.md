@@ -121,8 +121,8 @@ slave. Нет гарантии сохранения ещё не доставле
 ### Порядок обновления двух узлов
 
 1. Оставить retention/notifications выключенными, подготовить штатные backups.
-2. Обновить slave на один выбранный новый commit, перезапустить только Hemloc.
-3. Обновить master на тот же commit, перезапустить только Hemloc.
+2. Обновить slave на один выбранный новый commit, перезапустить только Hemlock.
+3. Обновить master на тот же commit, перезапустить только Hemlock.
 4. Проверить обычную репликацию, history/cursor, capability обоих, security ack,
    собственные входы и History. GoBGP не перезапускать.
 5. На изолированном стенде проверить handler. На рабочих узлах сначала preview
@@ -141,12 +141,12 @@ slave. Нет гарантии сохранения ещё не доставле
 
 ```bash
 install -d -o hemloc -g hemloc -m 0700 /var/lib/hemloc/audit-exports
-hemloc --config /etc/hemloc/hemloc.ini audit preview \
+hemlock --config /etc/hemloc/hemloc.ini audit preview \
   --output /var/lib/hemloc/audit-exports/plan.json
-hemloc --config /etc/hemloc/hemloc.ini audit export
-hemloc --config /etc/hemloc/hemloc.ini audit export \
+hemlock --config /etc/hemloc/hemloc.ini audit export
+hemlock --config /etc/hemloc/hemloc.ini audit export \
   --output /var/lib/hemloc/audit-exports/audit.jsonl --execute
-hemloc --config /etc/hemloc/hemloc.ini audit prune \
+hemlock --config /etc/hemloc/hemloc.ini audit prune \
   --plan /var/lib/hemloc/audit-exports/plan.json
 ```
 
@@ -160,7 +160,7 @@ request context не экспортируется. Не выводите сод�
 проверить сроки и исключения последних пяти входов. Только после разрешения:
 
 ```bash
-hemloc --config /etc/hemloc/hemloc.ini audit prune \
+hemlock --config /etc/hemloc/hemloc.ini audit prune \
   --plan /var/lib/hemloc/audit-exports/plan.json --execute
 ```
 
@@ -234,14 +234,14 @@ Errors & security и ограниченная запись journal с reason/exi
 пользователем сервиса (от root), после установки администратором handler:
 
 ```bash
-printf '%s\n' '{"subject":"Hemloc test","body":"Test notification"}' | \
+printf '%s\n' '{"subject":"Hemlock test","body":"Test notification"}' | \
   sudo -u hemloc /usr/sbin/notify_script
 ```
 
-Handler и его родительские каталоги не должны быть writable пользователем Hemloc.
+Handler и его родительские каталоги не должны быть writable пользователем Hemlock.
 Например root:hemloc 0750 для executable, root:hemloc 0640 для отдельного файла
 credentials, закрытые родительские каталоги. Credentials выбирает/читает только
-handler; Hemloc их не конфигурирует, не получает и не хранит. Не класть их в argv,
+handler; Hemlock их не конфигурирует, не получает и не хранит. Не класть их в argv,
 Git, /home или /root.
 
 Поставляемый unit: User/Group hemloc, NoNewPrivileges, пустой CapabilityBoundingSet,
@@ -250,5 +250,5 @@ RestrictAddressFamilies AF_UNIX/AF_INET/AF_INET6. Поэтому тест `sudo 
 воспроизводит sandbox сервиса: handler не видит home/root, общий /tmp, не может
 писать произвольно в /etc или повышать privileges. Файлы в /etc можно читать при
 правильных правах. Собственный CA/proxy handler настраивает самостоятельно: INI
-proxy Hemloc не управляет внешним executable. Глобально ослаблять unit ради handler
+proxy Hemlock не управляет внешним executable. Глобально ослаблять unit ради handler
 не нужно; выбрать совместимый script и отдельный доступный credentials-файл.

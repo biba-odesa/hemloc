@@ -6,7 +6,7 @@ multihop TTL for internal peers. It does not change the v4 API.
 
 Upstream: https://github.com/osrg/gobgp/tree/v4.10.0
 Upstream license: Apache-2.0, reproduced without modification in LICENSE.GoBGP.
-This license notice applies to the upstream GoBGP material, not to all of Hemloc.
+This license notice applies to the upstream GoBGP material, not to all of Hemlock.
 
 The patch file is source, not a daemon binary. Verified archive/toolchain hashes
 and deterministic rebuild instructions are in ../../docs/BUILD.md. Generated

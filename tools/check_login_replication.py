@@ -9,18 +9,18 @@ import threading
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import httpx
 import uvicorn
-from hemloc.auth import password_hash
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.replication import PeerTransport,Replicator,PeerUnavailable
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.web import create_app
+from hemlock.auth import password_hash
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.replication import PeerTransport,Replicator,PeerUnavailable
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.web import create_app
 from tools.check_gobgp import port,wait_for
 
 
 def main():
-    with tempfile.TemporaryDirectory(prefix='hemloc-login-https-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='hemlock-login-https-') as tmp:
         root=Path(tmp);cert=root/'tls.crt';key=root/'tls.key';token=root/'peer.token';token.write_text(secrets.token_urlsafe(48));token.chmod(0o600)
         subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',str(key),'-out',str(cert),'-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         a_port,b_port=port(),port()

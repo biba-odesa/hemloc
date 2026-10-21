@@ -4,11 +4,11 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
-from hemloc.config import Config
-from hemloc.domain import Actor
-from hemloc.service import Service
-from hemloc.store import Store
-from hemloc.presentation import View, history_card
+from hemlock.config import Config
+from hemlock.domain import Actor
+from hemlock.service import Service
+from hemlock.store import Store
+from hemlock.presentation import View, history_card
 
 
 class PresentationTests(unittest.TestCase):

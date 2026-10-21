@@ -8,7 +8,7 @@ from urllib.request import urlopen
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 
-from hemloc.gobgp import API_VERSION,messages
+from hemlock.gobgp import API_VERSION,messages
 
 
 def main():

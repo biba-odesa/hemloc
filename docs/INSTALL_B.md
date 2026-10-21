@@ -1,4 +1,4 @@
-# Установка Hemloc-B (slave) на чистую Debian 13
+# Установка Hemlock-B (slave) на чистую Debian 13
 
 Инструкция для релиза **v0.1.0**, полный commit
 `2a79d8a005bee81c8adf6f11fb856e3d0eb5064a` из
@@ -74,7 +74,7 @@ getent ahosts deb.debian.org github.com pypi.org whois.radb.net stat.ripe.net
 исправление сети/времени согласует администратор, инструкция не меняет их.
 Для другого CPU требуется другой проверенный SDK и его checksum.
 
-Hemloc INI proxy **не применяется** к apt, pip, curl, Git или Go. Если для них
+Hemlock INI proxy **не применяется** к apt, pip, curl, Git или Go. Если для них
 нужен proxy без авторизации, отдельно задать в текущей root-сессии:
 
 ```bash
@@ -237,7 +237,7 @@ install -o root -g root -m 0755 /root/hemloc-transfer/gobgpd /usr/local/bin/gobg
 `deploy/patches/gobgp-4.10.0-ibgp-ttl.patch`, Go SDK checksum или акт переноса
 binary A и checksum. GoBGP — Apache-2.0; приложенная
 `deploy/patches/LICENSE.GoBGP` не заменяет notices транзитивных модулей при
-дальнейшем распространении бинарника. Hemloc — MIT, biba-odesa.
+дальнейшем распространении бинарника. Hemlock — MIT, biba-odesa.
 
 ## 4. Конфиг B GoBGP: все соседи Disabled, импорт запрещён
 
@@ -382,7 +382,7 @@ openssl pkey -in /etc/hemloc/tls/hemloc-b.key -pubout -outform DER | sha256sum
 ```
 
 Последние два SHA должны совпасть; это public-key digests, секрет не выводится.
-При ошибке verify/checkip или несовпадении SHA не запускать Hemloc и не считать
+При ошибке verify/checkip или несовпадении SHA не запускать Hemlock и не считать
 сертификат установленным корректно. Эта тройная проверка обязательна **после**
 установки сертификата, включая случай повторного копирования файлов.
 Для браузера установить **публичный CA** в доверенное хранилище рабочей станции
@@ -554,7 +554,7 @@ announcements=no, импорт через `Store.transaction/write_local`, то�
 
 Добавление ASN в файл ещё не означает его инициализацию. Текущий процесс читает
 INI при запуске: после разрешённого изменения надо восстановить права/чтение
-INI и отдельно согласовать **перезапуск только Hemloc** для перечитывания.
+INI и отдельно согласовать **перезапуск только Hemlock** для перечитывания.
 GoBGP для этого не перезапускают. На каждом узле protection refresh должен
 успешно завершиться: проверить Info и наличие success metadata **для каждого**
 protected ASN. При недоступном IRR не выдумывать success и не удалять ASN ради
@@ -574,7 +574,7 @@ chmod 0700 /var/lib/hemloc
 
 Создать приведённый ниже `/root/hemloc-transfer/protection-transfer.py` на A и B
 (обычный текст программы, не секрет; режим 0700). A не останавливать.
-Импортировать только после успешного init-db B и до старта Hemloc B.
+Импортировать только после успешного init-db B и до старта Hemlock B.
 Не использовать Python `-O`: проверочные assert должны быть включены.
 Переносчик не копирует документы, пользователей, сессии, route owner или БД.
 Контроль digest обнаруживает порчу файла, но не заменяет доверенный SSH-канал.
@@ -690,7 +690,7 @@ B. Файл не содержит credential/правил, но раскрыва
 Явные protected ASN/prefixes A из envelope должны входить в INI B; переносчик
 откажет иначе. Не удалять дополнительную локальную protection B.
 
-**B/root**, файл читается root до понижения UID; Hemloc B должен быть остановлен:
+**B/root**, файл читается root до понижения UID; Hemlock B должен быть остановлен:
 
 ```bash
 /opt/hemloc/.venv/bin/python /root/hemloc-transfer/protection-transfer.py import \
@@ -712,7 +712,7 @@ ProtectionWorker B впоследствии может **добавить** но
 
 ```bash
 install -o root -g root -m 0644 /opt/hemloc/deploy/gobgp.service /etc/systemd/system/gobgp.service
-install -o root -g root -m 0644 /opt/hemloc/deploy/hemloc.service /etc/systemd/system/hemloc.service
+install -o root -g root -m 0644 /opt/hemloc/deploy/hemlock.service /etc/systemd/system/hemloc.service
 systemd-analyze verify /etc/systemd/system/gobgp.service /etc/systemd/system/hemloc.service
 sudo -u hemloc test -r /etc/hemloc/tls/hemloc-b.key
 sudo -u hemloc test -r /etc/hemloc/replication.token
@@ -787,7 +787,7 @@ In sync, last success свежий, lag 0; на A статус B тоже све
 явные сети + накопленный cache, готовность ASN. Users: учётная запись только
 для просмотра, смена пароля отключена с указанием master; формы изменений
 недоступны. API запрет записи проверять тестами на отдельной БД, не созданием
-фиктивных production-правил. `hemloc user list` от root B — допустимое чтение.
+фиктивных production-правил. `hemlock user list` от root B — допустимое чтение.
 `hemloc desired` выводит реальные сети/причины; использовать только в приватный
 файл с umask077, не в публичный тикет. До включения announcements маршруты
 могут быть Pending/Unknown; desired не означает Applied или экспорт.
@@ -806,7 +806,7 @@ In sync, last success свежий, lag 0; на A статус B тоже све
 show configuration protocols bgp group <BGP_GROUP> | display inheritance
 show configuration policy-options policy-statement DENY-ANY
 configure exclusive
-set protocols bgp group <BGP_GROUP> neighbor <SLAVE_IP> description "Hemloc-B"
+set protocols bgp group <BGP_GROUP> neighbor <SLAVE_IP> description "Hemlock-B"
 set protocols bgp group <BGP_GROUP> neighbor <SLAVE_IP> passive
 set protocols bgp group <BGP_GROUP> neighbor <SLAVE_IP> peer-as <LOCAL_AND_PEER_ASN>
 set protocols bgp group <BGP_GROUP> neighbor <SLAVE_IP> local-address <THIS_ROUTER_IP>
@@ -870,7 +870,7 @@ systemctl is-active gobgp hemloc
 unit v0.1.0 не включает config-auto-reload; SIGHUP/reload здесь не обещается.
 Это прервёт уже включённые сессии **B**, поэтому каждый следующий restart
 согласовывается отдельно. GoBGP A никогда не трогать. Это не операция изменения
-правила Hemloc. Для P2/P3 повторить с `ENABLE_PEER="$P2_IP"`/`"$P3_IP"` после
+правила Hemlock. Для P2/P3 повторить с `ENABLE_PEER="$P2_IP"`/`"$P3_IP"` после
 проверки предыдущего. Dashboard B должен показать фактический Established/uptime;
 прочие пока Disabled. На Junos `show bgp neighbor <SLAVE_IP>` проверяет реальную
 сессию. До announcements RIB/Adj-RIB-Out нового B должны быть пустыми.
@@ -919,13 +919,13 @@ show route receive-protocol bgp <SLAVE_IP> hidden
 Команда hidden не гарантирует полный pre-policy Adj-RIB-In на любой версии Junos:
 сохранение rejected routes зависит от keep policy. Нулевой вывод при DENY-ANY
 не опровергает локальный экспорт B. Сверять session counters/доступные received
-routes и policy на роутере. Hemloc Adj-RIB-Out не подтверждает приём/установку/FIB.
+routes и policy на роутере. Hemlock Adj-RIB-Out не подтверждает приём/установку/FIB.
 **DENY-ANY пока оставить**. Перевод в реально применяемый blackhole требует
 отдельного изменения только neighbor policies и проверки MTR из сети провайдера.
 Это не автоматический последний шаг установки.
 
 `announcements=no` не отзывает существующие пути! Для аварийного отключения
-локальных owned путей B: установить no, остановить только Hemloc B, затем root:
+локальных owned путей B: установить no, остановить только Hemlock B, затем root:
 
 ```bash
 /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini routes withdraw-owned
@@ -1006,7 +1006,7 @@ protection и последующий journal. Для изолированног�
 (пакетные зависимости runtime достаточны; создаёт только временные DB).
 
 При реальном восстановлении B: согласовать простой и изолировать BGP B на роутерах/
-гипервизоре; остановить Hemloc B. GoBGP может продолжать экспорт старой RIB,
+гипервизоре; остановить Hemlock B. GoBGP может продолжать экспорт старой RIB,
 поэтому одной остановки приложения недостаточно. На потерянной VM не поднимать
 вторую одновременно с тем же IP/owner. Использовать **B backup**, не рабочую DB A:
 
@@ -1047,7 +1047,7 @@ install -o hemloc -g hemloc -m 0600 "$RESTORE_DB" /var/lib/hemloc/hemloc.sqlite
 локальный INI B/TLS/token из закрытого config backup при необходимости, **не**
 накатывать архив на A. Если protection backup старее текущего cache, до запуска
 импортировать свежий export union, не терять накопленную защиту.
-Оставить announcements=no, затем старт Hemloc, полная синхронизация/догон,
+Оставить announcements=no, затем старт Hemlock, полная синхронизация/догон,
 проверка desired и local RIB. Только после актуализации маршрутов разрешать BGP;
 no само по себе старые пути GoBGP не отзывает. Восстановленные браузерные сессии
 могут оставаться до срока/credential-version проверки; для утраты/компрометации
@@ -1055,10 +1055,10 @@ backup нужна отдельная процедура отзыва credentials
 
 Для обновления выбрать **существующий фиксированный** новый tag и полный commit,
 прочитать его изменения/миграции. Сделать оба backup, поставить announcements=no
-и сохранить неизменный owner. Остановить только Hemloc B. `git fetch --tags origin`,
+и сохранить неизменный owner. Остановить только Hemlock B. `git fetch --tags origin`,
 `git checkout --detach <NEW_TAG>`, `test "$(git rev-parse HEAD)" = '<NEW_FULL_COMMIT>'`.
 Обновить зависимости из новых lock в **новом** root-owned venv, собрать/установить
-пакет и выполнить pip check; поменять `.venv` только при остановленном Hemloc.
+пакет и выполнить pip check; поменять `.venv` только при остановленном Hemlock.
 Пример точной последовательности **B/root** после backup/установки no:
 
 ```bash
@@ -1084,7 +1084,7 @@ systemctl is-active hemloc
 
 Останавливаться при любой ошибке, не копировать блок в script без error handling.
 Новый venv остаётся по постоянному пути NEXT_VENV: перемещение готового venv
-сломало бы shebang. Для rollback при остановленном Hemloc убрать только новый
+сломало бы shebang. Для rollback при остановленном Hemlock убрать только новый
 symlink `.venv`, вернуть previous в исходный `.venv` и старый checkout, затем
 проверить совместимость DB/миграций. Не удалять новый venv/backup автоматически.
 Конфиг/DB/ключи не перезаписывать примерами. При rollback вернуть прежние tag/venv,
@@ -1103,7 +1103,7 @@ protection и no; возвращение yes — отдельное действ
 1. Подтвердить, что старый A выключен или полностью изолирован от сети/BGP.
    Во время partition нельзя гарантированно обнаружить второго master.
 2. На B консолью изменить только role на master в локальном INI, перезапустить
-   **Hemloc**, не GoBGP. Проверить новый history, sequence, сохранение правил/users/
+   **Hemlock**, не GoBGP. Проверить новый history, sequence, сохранение правил/users/
    protection/owner. Если B был в no, само promotion не разрешает анонсы.
 3. Все дальнейшие изменения выполнять на новом master B. Не включать старый A
    без процедуры ниже; ветки никогда не объединяются.
@@ -1112,7 +1112,7 @@ protection и no; возвращение yes — отдельное действ
 
 1. Запустить его с **отключённой сетью гипервизора**. Через консоль поставить
    role=slave, peer_url нового master B, identity/token/CA; сохранить owner A.
-2. Перезапустить только Hemloc A. Независимый GoBGP может сохранять старые пути;
+2. Перезапустить только Hemlock A. Независимый GoBGP может сохранять старые пути;
    смена роли не блокирует reconciliation на старых данных до snapshot.
 3. Разрешить только канал репликации, **сохраняя изоляцию BGP A**. Если невозможно
    разделить доступы, не включать сеть целиком; согласовать изоляцию на роутерах.
@@ -1132,10 +1132,10 @@ protection и no; возвращение yes — отдельное действ
 | Peer rejected / 403 | одинаковый token_file, длина/права без печати содержимого; A.peer_node_id=B.node_id, обратная пара; X-Hemloc-Node задаёт приложение |
 | A не видит B / login history B не появляется на A | A.peer_url/token_file/CA, прямой TCP8443 A→B, свежий sync; A должен забрать local-audit outbox |
 | Peer sync failed / stale | journalctl, HTTPS CA/status client, cursor/history; working data не очищать; разные history требуют snapshot |
-| Proxy errors | отдельно apt/pip/curl env и Hemloc INI; use_proxy=no игнорирует env; IRR43/репликация/gRPC прямые |
+| Proxy errors | отдельно apt/pip/curl env и Hemlock INI; use_proxy=no игнорирует env; IRR43/репликация/gRPC прямые |
 | Protection not initialized / IRR error | imported success keys и cache, INI ASNs, прямой IRR43, bgpq4; не заменять пустым и не включать yes |
 | Permission denied / SQLite readonly | namei -l путей, root:hemloc 0640 для INI/key/token, hemloc:hemloc 0700 DB directory; unit ReadWritePaths; код остаётся root-owned |
-| Another Hemloc process owns background tasks | один serve на DB; systemctl show, ps; не удалять lock ради второго worker |
+| Another Hemlock process owns background tasks | один serve на DB; systemctl show, ps; не удалять lock ради второго worker |
 | BGP Disabled | admin-down=true ожидаемо на bootstrap; наличие соседа не означает сессию |
 | BGP Active/Idle | source B IP, route к peer, TCP179, passive на Junos, ASN/families, TTL/MD5/GTSM; DENY policy обычно не мешает Established |
 | ICMP administratively prohibited / admin-prohibited | это сетевой ACL/отказ по пути, не признак ошибки replication; согласовать с сетевой командой, не менять firewall автоматически |
@@ -1166,3 +1166,7 @@ reboot, реальные адреса B, сертификат production CA, м�
 остаются **операторской приёмкой**, а не выполненными действиями. B при подготовке
 не посещался; A читался без изменения services/config/DB. Никакой public tag не
 перемещён. Локальная инструкция/операционные значения остаются под ignored var/.
+
+The v0.1.0 commands above deliberately retain legacy import identities for that
+immutable historical release. For the corrected Hemlock package upgrade, use
+[RENAMING.md](RENAMING.md) and a reviewed current commit.

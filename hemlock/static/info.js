@@ -1,12 +1,12 @@
 'use strict';
 const infoTexts = {
   "uk": {
-    "title": "Про Hemloc",
+    "title": "Про Hemlock",
     "sections": [
       [
         "Призначення",
         [
-          "Hemloc керує блокуванням IP-адрес і мереж. Через GoBGP він передає маршрути IPv4 та IPv6 на пограничні маршрутизатори провайдера, «отруюючи» таблицю маршрутизації. За відповідних політик маршрутизаторів трафік до зазначених адрес спрямовується в blackhole, і ці зовнішні ресурси стають недоступними з мережі провайдера.",
+          "Hemlock керує блокуванням IP-адрес і мереж. Через GoBGP він передає маршрути IPv4 та IPv6 на пограничні маршрутизатори провайдера, «отруюючи» таблицю маршрутизації. За відповідних політик маршрутизаторів трафік до зазначених адрес спрямовується в blackhole, і ці зовнішні ресурси стають недоступними з мережі провайдера.",
           "History розділяє зміни блокувань, користувачів і доступ, помилки та безпеку. Guest бачить зміни блокувань і п’ять останніх успішних входів у власній картці. Адміністратор бачить усі категорії. Налаштовуване зберігання та сповіщення через зовнішній скрипт типово вимкнені; доставка не гарантується і не підтверджує встановлення маршруту."
         ]
       ],
@@ -35,8 +35,8 @@ const infoTexts = {
           {
             "list": [
               "Переконайтеся, що старий master вимкнений або ізольований від мережі.",
-              "Через консоль сервера в конфігураційному файлі Hemloc змініть роль slave на master.",
-              "Перезапустіть сервіс Hemloc.",
+              "Через консоль сервера в конфігураційному файлі Hemlock змініть роль slave на master.",
+              "Перезапустіть сервіс Hemlock.",
               "Подальші зміни виконуйте на новому master."
             ]
           },
@@ -44,8 +44,8 @@ const infoTexts = {
           {
             "list": [
               "Запустіть його з відключеною мережею на гіпервізорі.",
-              "Через консоль у конфігураційному файлі Hemloc змініть роль на slave, вкажіть адресу нового master та перевірте параметри авторизації й довіри реплікації.",
-              "Перезапустіть сервіс Hemloc, потім відновіть мережевий доступ для реплікації, зберігаючи ізоляцію BGP.",
+              "Через консоль у конфігураційному файлі Hemlock змініть роль на slave, вкажіть адресу нового master та перевірте параметри авторизації й довіри реплікації.",
+              "Перезапустіть сервіс Hemlock, потім відновіть мережевий доступ для реплікації, зберігаючи ізоляцію BGP.",
               "Дочекайтеся повної синхронізації та перевірте стан маршрутів. Лише після цього відновлюйте BGP-з’єднання."
             ]
           },
@@ -60,7 +60,7 @@ const infoTexts = {
       [
         "Protection",
         [
-          "Захищені ASN і префікси задаються під час налаштування серверів у конфігураційному файлі Hemloc на кожному вузлі. Конфігурація редагується через консоль; змінити protection через веб неможливо.",
+          "Захищені ASN і префікси задаються під час налаштування серверів у конфігураційному файлі Hemlock на кожному вузлі. Конфігурація редагується через консоль; змінити protection через веб неможливо.",
           "Захищений ASN, сам захищений префікс і будь-які специфічніші мережі всередині нього заблокувати не можна. Менш специфічний агрегат, який охоплює захищену мережу, дозволений.",
           "Наприклад, для protected 192.0.2.0/24 заборонені: 192.0.2.0/24, 192.0.2.128/25 та 192.0.2.1/32. Префікс 192.0.0.0/16 дозволений. Логіка однакова для IPv4, IPv6 і приватних мереж.",
           "Префікси захищених ASN доповнюють локальний protection. Помилка джерела не скасовує останній збережений набір захисту.",
@@ -77,7 +77,7 @@ const infoTexts = {
             "states": [
               [
                 "Applied",
-                "Свіжа перевірка підтвердила наявність локального маршруту Hemloc із потрібними атрибутами."
+                "Свіжа перевірка підтвердила наявність локального маршруту Hemlock із потрібними атрибутами."
               ],
               [
                 "Pending",
@@ -132,12 +132,12 @@ const infoTexts = {
     }
   },
   "en": {
-    "title": "About Hemloc",
+    "title": "About Hemlock",
     "sections": [
       [
         "Purpose",
         [
-          "Hemloc manages the blocking of IP addresses and networks. Through GoBGP it sends IPv4 and IPv6 routes to the provider’s border routers, “poisoning” the routing table. With the appropriate router policies, traffic to the specified addresses is directed into a blackhole, making these external resources unavailable from the provider’s network.",
+          "Hemlock manages the blocking of IP addresses and networks. Through GoBGP it sends IPv4 and IPv6 routes to the provider’s border routers, “poisoning” the routing table. With the appropriate router policies, traffic to the specified addresses is directed into a blackhole, making these external resources unavailable from the provider’s network.",
           "History separates blocklist changes, users and access, and errors and security. Guests can view blocklist changes and their own five most recent successful sign-ins. Administrators can view all categories. Configurable retention and external-script notifications are disabled by default; notifications are best effort and do not confirm route installation."
         ]
       ],
@@ -166,8 +166,8 @@ const infoTexts = {
           {
             "list": [
               "Make sure the old master is powered off or isolated from the network.",
-              "Through the server console, change the slave role to master in the Hemloc configuration file.",
-              "Restart the Hemloc service.",
+              "Through the server console, change the slave role to master in the Hemlock configuration file.",
+              "Restart the Hemlock service.",
               "Make further changes on the new master."
             ]
           },
@@ -175,8 +175,8 @@ const infoTexts = {
           {
             "list": [
               "Start it with networking disconnected at the hypervisor.",
-              "Through the console, change its role to slave in the Hemloc configuration file, specify the new master’s address, and check replication authentication and trust settings.",
-              "Restart the Hemloc service, then restore network access for replication while keeping BGP isolated.",
+              "Through the console, change its role to slave in the Hemlock configuration file, specify the new master’s address, and check replication authentication and trust settings.",
+              "Restart the Hemlock service, then restore network access for replication while keeping BGP isolated.",
               "Wait for full synchronization and check the routes. Restore BGP connectivity only after that."
             ]
           },
@@ -191,7 +191,7 @@ const infoTexts = {
       [
         "Protection",
         [
-          "Protected ASNs and prefixes are set in each node’s Hemloc configuration file when the servers are configured. Edit the configuration through the console; protection cannot be changed through the web interface.",
+          "Protected ASNs and prefixes are set in each node’s Hemlock configuration file when the servers are configured. Edit the configuration through the console; protection cannot be changed through the web interface.",
           "A protected ASN, a protected prefix itself, and any more-specific networks inside it cannot be blocked. A less-specific aggregate that covers the protected network is allowed.",
           "For example, with protected 192.0.2.0/24, the following are forbidden: 192.0.2.0/24, 192.0.2.128/25 and 192.0.2.1/32. Prefix 192.0.0.0/16 is allowed. The same logic applies to IPv4, IPv6 and private networks.",
           "Prefixes of protected ASNs extend local protection. A source failure does not remove the last saved protection set.",
@@ -208,7 +208,7 @@ const infoTexts = {
             "states": [
               [
                 "Applied",
-                "A fresh inspection confirmed a local Hemloc route with the required attributes."
+                "A fresh inspection confirmed a local Hemlock route with the required attributes."
               ],
               [
                 "Pending",
@@ -263,12 +263,12 @@ const infoTexts = {
     }
   },
   "ru": {
-    "title": "О Hemloc",
+    "title": "О Hemlock",
     "sections": [
       [
         "Назначение",
         [
-          "Hemloc управляет блокировкой IP-адресов и сетей. Через GoBGP он передаёт маршруты IPv4 и IPv6 на пограничные маршрутизаторы провайдера, «отравляя» таблицу маршрутизации. При соответствующих политиках маршрутизаторов трафик к указанным адресам направляется в blackhole, и эти внешние ресурсы становятся недоступны из сети провайдера.",
+          "Hemlock управляет блокировкой IP-адресов и сетей. Через GoBGP он передаёт маршруты IPv4 и IPv6 на пограничные маршрутизаторы провайдера, «отравляя» таблицу маршрутизации. При соответствующих политиках маршрутизаторов трафик к указанным адресам направляется в blackhole, и эти внешние ресурсы становятся недоступны из сети провайдера.",
           "History разделяет изменения блокировок, пользователей и доступ, ошибки и безопасность. Guest видит изменения блокировок и пять последних успешных входов в своей карточке. Администратор видит все категории. Настраиваемое хранение и уведомления через внешний скрипт по умолчанию выключены; доставка не гарантируется и не подтверждает установку маршрута."
         ]
       ],
@@ -297,8 +297,8 @@ const infoTexts = {
           {
             "list": [
               "Убедитесь, что старый master выключен или изолирован от сети.",
-              "Через консоль сервера в конфигурационном файле Hemloc измените роль slave на master.",
-              "Перезапустите сервис Hemloc.",
+              "Через консоль сервера в конфигурационном файле Hemlock измените роль slave на master.",
+              "Перезапустите сервис Hemlock.",
               "Дальнейшие изменения выполняйте на новом master."
             ]
           },
@@ -306,8 +306,8 @@ const infoTexts = {
           {
             "list": [
               "Запустите его с отключённой сетью на гипервизоре.",
-              "Через консоль в конфигурационном файле Hemloc измените роль на slave, укажите адрес нового master и проверьте параметры авторизации и доверия репликации.",
-              "Перезапустите сервис Hemloc, затем восстановите сетевой доступ для репликации, сохраняя изоляцию BGP.",
+              "Через консоль в конфигурационном файле Hemlock измените роль на slave, укажите адрес нового master и проверьте параметры авторизации и доверия репликации.",
+              "Перезапустите сервис Hemlock, затем восстановите сетевой доступ для репликации, сохраняя изоляцию BGP.",
               "Дождитесь полной синхронизации и проверьте состояние маршрутов. Только после этого восстанавливайте BGP-соединения."
             ]
           },
@@ -322,7 +322,7 @@ const infoTexts = {
       [
         "Protection",
         [
-          "Защищённые ASN и префиксы задаются при настройке серверов в конфигурационном файле Hemloc на каждом узле. Конфигурация редактируется через консоль; изменить protection через веб нельзя.",
+          "Защищённые ASN и префиксы задаются при настройке серверов в конфигурационном файле Hemlock на каждом узле. Конфигурация редактируется через консоль; изменить protection через веб нельзя.",
           "Защищённый ASN, сам защищённый префикс и любые более специфичные сети внутри него заблокировать нельзя. Менее специфичный агрегат, который охватывает защищённую сеть, разрешён.",
           "Например, для protected 192.0.2.0/24 запрещены: 192.0.2.0/24, 192.0.2.128/25 и 192.0.2.1/32. Префикс 192.0.0.0/16 разрешён. Логика одинакова для IPv4, IPv6 и приватных сетей.",
           "Префиксы защищённых ASN дополняют локальный protection. Ошибка источника не отменяет последний сохранённый набор защиты.",
@@ -339,7 +339,7 @@ const infoTexts = {
             "states": [
               [
                 "Applied",
-                "Свежая проверка подтвердила наличие локального маршрута Hemloc с нужными атрибутами."
+                "Свежая проверка подтвердила наличие локального маршрута Hemlock с нужными атрибутами."
               ],
               [
                 "Pending",
@@ -397,7 +397,7 @@ const infoTexts = {
 
 const stateSummary='State describes desired eligibility and fresh local GoBGP observations. It does not confirm export or acceptance by a remote router. Open Info for all definitions.';
 const routeStateDescriptions={
-  'Applied':'Desired and observed within 45 seconds, with no newer observation failure: a locally originated Hemloc-owned path has the configured next-hop, local preference and communities.',
+  'Applied':'Desired and observed within 45 seconds, with no newer observation failure: a locally originated Hemlock-owned path has the configured next-hop, local preference and communities.',
   'Pending':'Desired, with a fresh local observation, but no matching local path. No stored reconciliation error and a next-hop is configured. This can include disabled announcements; it does not mean installation succeeded.',
   'Failed':'Desired and freshly observed, with no matching local path, and either a stored reconciliation error or no next-hop configured for this family. A stored error can affect multiple pending prefixes.',
   'Excluded by protection':'The source prefix is absent from the desired set after local protected-prefix or protected-ASN checks. An old local path may still await withdrawal.',

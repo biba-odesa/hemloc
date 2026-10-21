@@ -1,5 +1,5 @@
 [Unit]
-Description=Hemloc prefix blocking controller
+Description=Hemlock prefix blocking controller
 After=network-online.target gobgp.service
 Wants=network-online.target gobgp.service
 

@@ -7,11 +7,11 @@ import sys
 import tempfile
 import time
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from hemloc.config import load
-from hemloc.domain import asn,prefix
-from hemloc.irr import IRR,Metadata
-from hemloc.service import Service
-from hemloc.store import Store
+from hemlock.config import load
+from hemlock.domain import asn,prefix
+from hemlock.irr import IRR,Metadata
+from hemlock.service import Service
+from hemlock.store import Store
 
 
 def main():
@@ -22,7 +22,7 @@ def main():
     args=parser.parse_args();address=prefix(args.ip)
     config=replace(load(args.config),announcements=False,protected_asns=(args.asn,))
     report={}
-    with tempfile.TemporaryDirectory(prefix='hemloc-sources-') as tmp:
+    with tempfile.TemporaryDirectory(prefix='hemlock-sources-') as tmp:
         service=Service(Store(replace(config,database=str(Path(tmp)/'sources.sqlite'))))
         for name,action in [('metadata_asn',lambda:Metadata(config).asn_name(args.asn)),
                             ('metadata_ip',lambda:Metadata(config).origins(address)),

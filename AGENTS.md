@@ -1,4 +1,4 @@
-# Hemloc development rules
+# Hemlock development rules
 
 - Scope is this project. Inspect the directory before edits; never change other projects.
 - Target Debian 13 / Python 3.13; one unprivileged FastAPI/Uvicorn process owns background tasks per SQLite database.
