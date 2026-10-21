@@ -214,3 +214,102 @@ Next: operator runs the prepared probe on the affected node and reports its
 redacted result. Determine the node-specific cause from that evidence. Deploy
 the diagnostic logging only in a separately authorized update; do not clear
 protection or its recorded error to manufacture success.
+
+## History retention investigation and proposal
+
+Read-only aggregate measurements and a site-specific summary were saved only in
+ignored var/. No HTTP requests, working Store initialization, database writes,
+deletion, VACUUM/checkpoint, service restart or second-node access was used.
+Counts were cross-checked across action/result/date/category totals; logical
+audit JSON bytes are distinguished from shared-table allocation and journal copies.
+
+AUDIT_RETENTION.md proposes separate changes/security/auth lifetimes, a persisted
+daily master job, dry-run-first CLI export/prune, default Changes History filtering
+with SQL pagination and last-five-login exemptions. It explicitly requires a
+versioned maintenance operation, snapshot/prune receipts, security outbox
+acknowledgments/floor handling and mixed-version gates. Current append-only audit
+deletion prohibition remains intact; no retention feature or CLI is implemented.
+Journal lifecycle and file shrinkage are not misrepresented as audit deletion.
+
+Next: review the proposed policy/protocol, implement and test on isolated nodes,
+then present the exact live manifest and exclusions before authorizing any cleanup.
+Forbidden actions must continue to create audit events throughout.
+
+## History, retention and external notifications — implementation checkpoint
+
+The preceding proposal is superseded by the implemented policy in
+AUDIT_RETENTION.md. Defaults remain disabled; no installed node or working data
+was changed, no working prune/notification was run, and no service was restarted.
+
+Implemented:
+
+- Three History tabs with legacy-preserving classification, SQL count/filter/order/
+  limit and indexed category/time expressions. Guest can query only blocklist
+  history; own-account login history remains separately authorized. Unicode search,
+  actor/node/action/result/date filters and clamped pagination are retained.
+- Master-only exact-plan audit maintenance, per-category 365/90/7-day cutoffs,
+  fixed latest-five identity exemptions, private preview/export/prune CLI,
+  short bounded transactions, serialized workers/CLI, persisted progress and daily
+  Europe/Kyiv scheduling with DST and one startup catch-up. Unknown events stay.
+- Typed audit_prune journal operations, persistent ID/digest receipts, schema-2
+  snapshots after pruning, capability negotiation and rejection of legacy pulls
+  after maintenance. Ordinary schema-1 operation remains compatible before prune.
+  Configured peers must be current, compatible and have drained known security
+  outboxes before cleanup. Receipts prevent replay/outbox/promotion resurrection.
+- Security transport rows/sequence numbers remain physically retained. Status
+  carries security generation/cursor acknowledgment; no pending facts are dropped.
+  No journal truncation or automatic VACUUM. Backups/exports remain separate copies.
+- Single-attempt external notification executable, exact UTF-8 subject/body stdin,
+  bounded in-memory queue and 1–4 workers, no shell, retries or startup replay.
+  Master commit-only bulk summaries, changed accepted ASN sets, local login limits
+  and aggregated socket-IP suspicious access; no replicated notification duplicates.
+  Failures are bounded audit/journal facts and never feed a notification loop.
+- Commented configuration, credential-free handler, operations/upgrade/rollback
+  limits, README and brief Info EN/RU/UK explanation.
+
+Verification on isolated data:
+
+- Full unittest run with ResourceWarning errors: 122 discovered, 121 passed; one
+  opt-in live-target test skipped. Latest source hardening additionally rechecked
+  retention/snapshot, CLI and notification suites. No production audit test events.
+- Real two-node verified HTTPS test: snapshot before prune plus journal catch-up,
+  duplicate replay, explicit rejection of legacy protocol after prune, network
+  outage, application restart and catch-up. An intentional rejected protocol
+  request creates an audit event and is replicated normally.
+- Concurrent SQLite snapshot/prune read transaction; interrupted/rolled-back batch
+  then resumed exact plan; advisory-lock exclusion; pending outbox preservation;
+  promotion and former-master return with no pruned-ID resurrection; actual Store
+  imported from tag v0.1.0 accepts pre-prune state and atomically rejects v2.
+- Cutoff boundaries, unknown events, five logins across identities/nodes, disabled
+  identity retention, UTC-second expiry vs Kyiv daily/DST slots, startup catch-up,
+  rules/users/credential versions/sessions/protection/desired unchanged by prune.
+- Real temporary executables: Unicode/quotes/multiline JSON, direct argv, one
+  attempt for nonzero/timeout/missing executable, output secrecy, disabled mode,
+  queue overflow, one/two-worker limits, aggregation threshold/cooldown, local
+  slave alert with no master, bulk summary and unchanged-refresh suppression.
+- Real Chromium: admin/guest History and API access, filtering/pagination/empty
+  results/details, dark/light, own/slave account. Info EN/RU/UK dark/light retained
+  its agreed layout and protection pagination; screenshots stay in ignored var/.
+- Separate peer-free GoBGP 4.10.0 process: IPv4/IPv6 attributes, foreign ownership,
+  repair, lost-call recovery, daemon restart, protection withdrawal and addressed
+  deletion passed. No working daemon, peer or route was touched.
+
+Limitations and next operator action:
+
+- Not deployed. Update slave, then master to the same reviewed commit with both
+  features disabled; verify capability/cursors/security ack. Only then enable
+  notifications after a fake-handler check and review a real private prune preview
+  before enabling master retention. Do not downgrade either node to v0.1.0 after
+  pruning. Full commands and exact INI keys are in AUDIT_RETENTION.md.
+- Retention pauses for an unavailable/incompatible/lagging configured peer.
+  Transport outbox and journal payloads, receipts, backups and exports are not
+  compacted. File shrinkage and deletion from old copies are not promised.
+- Notification delivery is best effort and pending messages can be lost at process
+  stop/crash. Aggregation tracks bounded recent source state and reports at-least
+  counts; distributed-source eviction can reduce detection completeness.
+- Promotion still requires operator isolation and a caught-up slave. No new
+  guarantee is made for operations never replicated before a forced promotion or
+  simultaneous restoration of obsolete backups without current receipts.
+- Working-data deletion remains unauthorized in this checkpoint. Present the exact
+  live manifest/counts/cutoffs/digest separately before any first working cleanup.
+  Push and deployment are not performed.

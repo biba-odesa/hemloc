@@ -114,6 +114,8 @@ class ClosingConnection(sqlite3.Connection):
 class Store:
     def __init__(self, config, activate=True):
         self.config = config
+        self.on_commit = None
+        self.notifications = None
         path = Path(config.database)
         path.parent.mkdir(parents=True, exist_ok=True)
         if not path.exists():
@@ -159,6 +161,9 @@ class Store:
                     " AND (SELECT value FROM meta WHERE key='role')='master' AND EXISTS (SELECT 1 FROM documents d WHERE d.kind='rule' AND d.id != NEW.id AND json_extract(d.body,'$.kind')=json_extract(NEW.body,'$.kind') AND (" +
                     identity.format(row='d') + ")=(" + identity.format(row='NEW') +
                     ")) BEGIN SELECT RAISE(ABORT,'duplicate_rule'); END;")
+        from .history import setup
+        with self.connect() as db:
+            setup(db)
         if activate:
             with self.transaction() as db:
                 previous = self.meta(db, "role")
@@ -191,8 +196,15 @@ class Store:
         db = self.connect()
         try:
             db.execute("BEGIN IMMEDIATE")
+            db.audit_events = []
             yield db
             db.commit()
+            if self.on_commit and db.audit_events:
+                try:
+                    self.on_commit(db.audit_events)
+                except Exception:
+                    import logging
+                    logging.getLogger("uvicorn.error.notifications").error("Notification enqueue failed")
         except BaseException:
             db.rollback()
             raise
@@ -265,11 +277,12 @@ class Store:
             self.append_journal(db, [operation])
         else:
             db.execute('INSERT INTO security_audit(id,body) VALUES(?,?)', (doc['id'], encode(doc)))
+        db.audit_events.append(doc)
         return doc
 
-    def security_event(self, actor, action, object_name, result):
+    def security_event(self, actor, action, object_name, result, context=None):
         with self.transaction() as db:
-            return self.security_record(db, actor, action, object_name, result)
+            return self.security_record(db, actor, action, object_name, result, context)
 
     def local_security_events(self, after=0, limit=100, history=''):
         if type(after) is not int or after < 0:
@@ -289,7 +302,7 @@ class Store:
         """Promotion publishes pending local authentication events, not divergent rules."""
         operations = []
         for row in db.execute('SELECT id,body FROM security_audit ORDER BY seq'):
-            if self.read(db, 'audit', row[0]) is None:
+            if self.read(db, 'audit', row[0]) is None and not db.execute('SELECT 1 FROM audit_tombstones WHERE id=?', (row[0],)).fetchone():
                 operation = {'kind': 'audit', 'id': row[0], 'doc': json.loads(row[1])}
                 self.operation(db, operation)
                 operations.append(operation)
@@ -329,7 +342,10 @@ class Store:
                     doc['actor'] != identity(doc['actor'])):
                     raise Invalid('Peer may submit only constrained security events')
                 validate_security_context(doc['action'], doc['object'], doc['result'], doc['before'], doc['after'])
-                if self.read(db, 'audit', doc['id']) is None:
+                receipt = db.execute('SELECT digest FROM audit_tombstones WHERE id=?', (doc['id'],)).fetchone()
+                if receipt and receipt[0] != digest(doc):
+                    raise Conflict('Pruned peer audit identity mismatch')
+                if self.read(db, 'audit', doc['id']) is None and not db.execute('SELECT 1 FROM audit_tombstones WHERE id=?', (doc['id'],)).fetchone():
                     operation = {'kind': 'audit', 'id': doc['id'], 'doc': doc}
                     self.operation(db, operation)
                     operations.append(operation)
@@ -347,6 +363,8 @@ class Store:
             docs = {r[0]: json.loads(r[1]) for r in db.execute("SELECT id,body FROM documents WHERE kind='audit'")}
             for row in db.execute('SELECT id,body FROM security_audit'):
                 docs.setdefault(row[0], json.loads(row[1]))
+            for row in db.execute('SELECT id FROM audit_tombstones'):
+                docs.pop(row[0], None)
             return list(docs.values())
 
     def successful_logins(self, login):
@@ -359,12 +377,14 @@ class Store:
                     AND json_extract(body,'$.action')='auth.login'
                     AND json_extract(body,'$.result')='success'
                     AND json_extract(body,'$.actor')=?
+                    AND NOT EXISTS(SELECT 1 FROM audit_tombstones t WHERE t.id=documents.id)
                     ORDER BY json_extract(body,'$.at') DESC,id DESC LIMIT 5),
                 pending AS (
                     SELECT id,body FROM security_audit
                     WHERE json_extract(body,'$.action')='auth.login'
                     AND json_extract(body,'$.result')='success'
                     AND json_extract(body,'$.actor')=?
+                    AND NOT EXISTS(SELECT 1 FROM audit_tombstones t WHERE t.id=security_audit.id)
                     AND NOT EXISTS (SELECT 1 FROM documents WHERE kind='audit' AND id=security_audit.id)
                     ORDER BY json_extract(body,'$.at') DESC,id DESC LIMIT 5)
                 SELECT body FROM (SELECT id,body FROM shared UNION ALL SELECT id,body FROM pending)
@@ -382,6 +402,9 @@ class Store:
         if not isinstance(operation, dict) or set(operation) != {"kind", "id", "doc"}:
             raise Invalid("Invalid journal operation")
         kind, key, doc = operation["kind"], operation["id"], operation["doc"]
+        if kind == "audit_prune":
+            from .retention import apply_operation
+            return apply_operation(db, operation)
         if kind not in KINDS or not isinstance(key, str):
             raise Invalid("Unknown journal entity")
         if doc is None:
@@ -390,6 +413,12 @@ class Store:
             db.execute("DELETE FROM documents WHERE kind=? AND id=?", (kind, key))
         else:
             validate_doc(kind, key, doc)
+            if kind == "audit":
+                receipt = db.execute("SELECT digest FROM audit_tombstones WHERE id=?", (key,)).fetchone()
+                if receipt:
+                    if receipt[0] != digest(doc):
+                        raise Conflict("Pruned audit identity mismatch")
+                    return
             if kind == "audit" and Store.read(db, kind, key) is not None:
                 raise Invalid("Audit replacement prohibited")
             try:
@@ -424,12 +453,13 @@ class Store:
                          "result": 'failed' if action == 'asn.refresh' and after and after.get('last_error') else 'saved'}
                 audit_op = {"kind": "audit", "id": audit["id"], "doc": audit}
                 self.operation(db, audit_op)
+                db.audit_events.append(audit)
                 operations.extend([operation, audit_op])
                 results.append(after)
             sequence = int(self.meta(db, "sequence", "0")) + 1
             db.execute("INSERT INTO journal VALUES(?,?)", (sequence, encode(operations)))
             self.set_meta(db, "sequence", sequence)
-            return results
+        return results
 
     def snapshot(self):
         db = self.connect()
@@ -440,6 +470,10 @@ class Store:
                        "master_id": self.meta(db, "master_id"),
                        "documents": [{"kind": r[0], "id": r[1], "doc": json.loads(r[2])}
                                      for r in db.execute("SELECT kind,id,body FROM documents ORDER BY kind,id")]}
+            tombstones = [dict(r) for r in db.execute("SELECT id,digest FROM audit_tombstones ORDER BY id")]
+            if tombstones:
+                payload["schema"] = 2
+                payload["tombstones"] = tombstones
             return {"payload": payload, "digest": digest(payload)}
         finally:
             db.rollback()
@@ -463,16 +497,24 @@ class Store:
         payload = snapshot["payload"]
         if digest(payload) != snapshot["digest"]:
             raise Invalid("Snapshot digest mismatch")
-        if set(payload) != {"schema", "history", "sequence", "master_id", "documents"}:
+        expected = {"schema", "history", "sequence", "master_id", "documents"}
+        if payload.get("schema") == 2:
+            expected.add("tombstones")
+        if set(payload) != expected:
             raise Invalid("Invalid snapshot schema")
         self.validate_header(payload)
-        if payload["schema"] != SCHEMA or not isinstance(payload["documents"], list):
+        if payload["schema"] not in (SCHEMA, 2) or not isinstance(payload["documents"], list):
             raise Invalid("Unsupported snapshot schema")
+        from .retention import validate_entries
+        validate_entries(payload.get("tombstones", []), bounded=False)
+        receipt_ids = {item["id"] for item in payload.get("tombstones", [])}
         identities = set()
         for operation in payload["documents"]:
             if not isinstance(operation, dict) or set(operation) != {"kind", "id", "doc"}:
                 raise Invalid("Invalid snapshot object")
             validate_doc(operation["kind"], operation["id"], operation["doc"])
+            if operation["kind"] == "audit" and operation["id"] in receipt_ids:
+                raise Invalid("Snapshot contains pruned audit")
             identity = operation["kind"], operation["id"]
             if identity in identities:
                 raise Invalid("Duplicate snapshot object")
@@ -482,6 +524,10 @@ class Store:
         with self.transaction() as db:
             if self.meta(db, "role") != "slave":
                 raise Conflict("Role changed during snapshot")
+            from .retention import apply_operation
+            receipts = payload.get("tombstones", [])
+            for offset in range(0, len(receipts), 500):
+                apply_operation(db, {"kind":"audit_prune", "id":"retention", "doc":{"entries":receipts[offset:offset+500]}})
             db.execute("DELETE FROM documents")
             db.execute("DELETE FROM journal")
             db.execute("DELETE FROM sessions")

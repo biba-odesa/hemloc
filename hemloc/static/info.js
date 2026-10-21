@@ -6,7 +6,8 @@ const infoTexts = {
       [
         "Призначення",
         [
-          "Hemloc керує блокуванням IP-адрес і мереж. Через GoBGP він передає маршрути IPv4 та IPv6 на пограничні маршрутизатори провайдера, «отруюючи» таблицю маршрутизації. За відповідних політик маршрутизаторів трафік до зазначених адрес спрямовується в blackhole, і ці зовнішні ресурси стають недоступними з мережі провайдера."
+          "Hemloc керує блокуванням IP-адрес і мереж. Через GoBGP він передає маршрути IPv4 та IPv6 на пограничні маршрутизатори провайдера, «отруюючи» таблицю маршрутизації. За відповідних політик маршрутизаторів трафік до зазначених адрес спрямовується в blackhole, і ці зовнішні ресурси стають недоступними з мережі провайдера.",
+          "History розділяє зміни блокувань, користувачів і доступ, помилки та безпеку. Guest бачить зміни блокувань і п’ять останніх успішних входів у власній картці. Адміністратор бачить усі категорії. Налаштовуване зберігання та сповіщення через зовнішній скрипт типово вимкнені; доставка не гарантується і не підтверджує встановлення маршруту."
         ]
       ],
       [
@@ -136,7 +137,8 @@ const infoTexts = {
       [
         "Purpose",
         [
-          "Hemloc manages the blocking of IP addresses and networks. Through GoBGP it sends IPv4 and IPv6 routes to the provider’s border routers, “poisoning” the routing table. With the appropriate router policies, traffic to the specified addresses is directed into a blackhole, making these external resources unavailable from the provider’s network."
+          "Hemloc manages the blocking of IP addresses and networks. Through GoBGP it sends IPv4 and IPv6 routes to the provider’s border routers, “poisoning” the routing table. With the appropriate router policies, traffic to the specified addresses is directed into a blackhole, making these external resources unavailable from the provider’s network.",
+          "History separates blocklist changes, users and access, and errors and security. Guests can view blocklist changes and their own five most recent successful sign-ins. Administrators can view all categories. Configurable retention and external-script notifications are disabled by default; notifications are best effort and do not confirm route installation."
         ]
       ],
       [
@@ -266,7 +268,8 @@ const infoTexts = {
       [
         "Назначение",
         [
-          "Hemloc управляет блокировкой IP-адресов и сетей. Через GoBGP он передаёт маршруты IPv4 и IPv6 на пограничные маршрутизаторы провайдера, «отравляя» таблицу маршрутизации. При соответствующих политиках маршрутизаторов трафик к указанным адресам направляется в blackhole, и эти внешние ресурсы становятся недоступны из сети провайдера."
+          "Hemloc управляет блокировкой IP-адресов и сетей. Через GoBGP он передаёт маршруты IPv4 и IPv6 на пограничные маршрутизаторы провайдера, «отравляя» таблицу маршрутизации. При соответствующих политиках маршрутизаторов трафик к указанным адресам направляется в blackhole, и эти внешние ресурсы становятся недоступны из сети провайдера.",
+          "History разделяет изменения блокировок, пользователей и доступ, ошибки и безопасность. Guest видит изменения блокировок и пять последних успешных входов в своей карточке. Администратор видит все категории. Настраиваемое хранение и уведомления через внешний скрипт по умолчанию выключены; доставка не гарантируется и не подтверждает установку маршрута."
         ]
       ],
       [

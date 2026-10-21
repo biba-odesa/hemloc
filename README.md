@@ -84,3 +84,10 @@ Hemloc is MIT licensed, copyright biba-odesa. See [LICENSE](LICENSE).
 The GoBGP TTL patch includes upstream Apache-2.0 material; its license and
 attribution remain in [deploy/patches](deploy/patches/README.md). Dependencies
 retain their respective licenses; see [THIRD_PARTY.md](THIRD_PARTY.md).
+
+History has separate Blocklist changes, Users & access, and Errors & security
+views. Optional master-owned audit retention and best-effort external-script
+notifications are disabled by default. See [audit operations](docs/AUDIT_RETENTION.md)
+for the two-node upgrade gate, exact dry-run plans, latest-five-login protection,
+transport-data limitations and script sandbox requirements. No working cleanup or
+notification delivery is enabled by installing the source alone.

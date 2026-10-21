@@ -41,6 +41,25 @@ class WebTests(unittest.TestCase):
         self.assertEqual(result.status_code, 200)
         return {'x-csrf-token':result.json()['csrf']}
 
+    def test_history_tabs_are_server_side_authorized_with_filtered_counts(self):
+        headers = self.login()
+        self.client.post('/api/rules/manual', json={'value':'192.0.2.99','comment':'visible'}, headers=headers)
+        self.client.get('/missing-unknown-path?secret=do-not-store')
+        for category in ('blocklist','users_access','errors_security'):
+            self.assertGreater(self.client.get('/api/history',params={'category':category}).json()['total'],0)
+        self.client.post('/api/logout',headers=headers)
+        self.login('guest')
+        for endpoint in ('history','audit'):
+            for category in ('users_access','errors_security','unknown'):
+                response=self.client.get('/api/'+endpoint,params={'category':category,'q':'admin'})
+                self.assertEqual(response.status_code,403)
+                self.assertNotIn('total',response.json())
+            data=self.client.get('/api/'+endpoint,params={'q':'visible'}).json()
+            self.assertEqual(data['total'],1)
+        self.assertEqual(self.client.get('/api/login-history',params={'login':'admin'}).status_code,403)
+        self.assertEqual(len(self.client.get('/api/login-history').json()['items']),1)
+        self.assertNotIn('do-not-store',str(self.store.audit_history()))
+
     def test_unconfigured_replication_is_explicit_without_contacting_peer(self):
         self.login()
         response = self.client.get('/api/observation')

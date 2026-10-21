@@ -49,7 +49,41 @@ class Config:
     v6_community: str = "64512:666"
     owner: tuple = (64512, 100, 1)
 
+    retention_enabled: bool = False
+    blocklist_days: int = 365
+    users_access_days: int = 90
+    errors_security_days: int = 7
+    cleanup_time: str = "01:00"
+    retention_timezone: str = "Europe/Kyiv"
+    retention_batch_size: int = 200
+    notifications_enabled: bool = False
+    notification_script: str = "/usr/sbin/notify_script"
+    notification_timeout_seconds: float = 15.0
+    notification_blocklist_changes: bool = True
+    notification_login_blocked: bool = True
+    notification_suspicious_access: bool = True
+    notification_queue_size: int = 100
+    notification_workers: int = 1
+    suspicious_threshold: int = 30
+    suspicious_window_seconds: int = 60
+    suspicious_cooldown_seconds: int = 900
+
     def validate(self):
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+        import datetime
+        try:
+            ZoneInfo(self.retention_timezone)
+            datetime.time.fromisoformat(self.cleanup_time)
+        except (ValueError, ZoneInfoNotFoundError):
+            raise Invalid("Invalid retention timezone or cleanup_time") from None
+        if (len(self.cleanup_time) != 5 or any(not 1 <= v <= 36500 for v in (self.blocklist_days, self.users_access_days, self.errors_security_days))
+                or not 1 <= self.retention_batch_size <= 500):
+            raise Invalid("Retention days must be 1..36500; batch size 1..500")
+        if (not Path(self.notification_script).is_absolute() or "\x00" in self.notification_script or not 0 < self.notification_timeout_seconds <= 120
+                or not 1 <= self.notification_queue_size <= 10000 or not 1 <= self.notification_workers <= 4
+                or not 1 <= self.suspicious_threshold <= 100000 or not 1 <= self.suspicious_window_seconds <= 3600
+                or not 1 <= self.suspicious_cooldown_seconds <= 86400):
+            raise Invalid("Invalid notification settings")
         if self.role not in ("master", "slave"):
             raise Invalid("role must be master or slave")
         if not self.node_id or self.peer_node_id == self.node_id:
@@ -89,6 +123,8 @@ def load(path: str) -> Config:
     if not ini.read(path):
         raise Invalid(f"Cannot read config: {path}")
     mapping = {
+        "retention": ("retention_enabled", "blocklist_days", "users_access_days", "errors_security_days", "cleanup_time", "retention_timezone", "retention_batch_size"),
+        "notifications": ("notifications_enabled", "notification_script", "notification_timeout_seconds", "notification_blocklist_changes", "notification_login_blocked", "notification_suspicious_access", "notification_queue_size", "notification_workers", "suspicious_threshold", "suspicious_window_seconds", "suspicious_cooldown_seconds"),
         "node": ("node_id", "role", "database", "peer_url", "peer_node_id", "token_file", "poll_seconds"),
         "web": ("host", "port", "tls", "cert", "key", "ca"),
         "proxy": ("use_proxy", "http_proxy", "https_proxy", "no_proxy"),
@@ -102,7 +138,9 @@ def load(path: str) -> Config:
         if not ini.has_section(section):
             continue
         for name in fields:
-            key = {"http_proxy": "http", "https_proxy": "https"}.get(name, name)
+            key = {"http_proxy": "http", "https_proxy": "https", "retention_enabled": "enabled", "retention_timezone": "timezone", "retention_batch_size": "batch_size", "notifications_enabled": "enabled"}.get(name, name)
+            if section == "notifications" and name.startswith("notification_"):
+                key = name.removeprefix("notification_")
             if not ini.has_option(section, key):
                 continue
             default = getattr(defaults, name)

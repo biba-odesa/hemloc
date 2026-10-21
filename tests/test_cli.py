@@ -46,6 +46,19 @@ class CLITests(unittest.TestCase):
             result = main(arguments)
         return result, output.getvalue(), error.getvalue(), prompt.call_count
 
+    def test_audit_preview_export_and_exact_plan_prune(self):
+        import json,time,uuid
+        from hemloc.store import encode
+        event={'id':str(uuid.uuid4()),'at':time.time()-10*86400,'node':'a','actor':'anonymous','action':'http.request','object':'request','before':None,'after':None,'result':'invalid'}
+        with self.store.transaction() as db:self.store.operation(db,{'kind':'audit','id':event['id'],'doc':event})
+        plan=str(Path(self.tmp.name)/'plan.json');output=str(Path(self.tmp.name)/'export.jsonl')
+        self.assertEqual(self.invoke(['audit','preview','--output',plan])[0],0)
+        self.assertIsNotNone(self.store.get('audit',event['id']))
+        self.assertEqual(self.invoke(['audit','export','--output',output])[0],0);self.assertFalse(Path(output).exists())
+        self.assertEqual(self.invoke(['audit','export','--output',output,'--execute'])[0],0);self.assertTrue(Path(output).exists())
+        self.assertEqual(self.invoke(['audit','prune','--plan',plan])[0],0);self.assertIsNotNone(self.store.get('audit',event['id']))
+        self.assertEqual(self.invoke(['audit','prune','--plan',plan,'--execute'])[0],0);self.assertIsNone(self.store.get('audit',event['id']))
+
     def test_password_create_reset_lengths_and_composition(self):
         from hemloc.auth import password_verify
         for command, password in [(['user','create','policy-user','--role','admin'],'abcde1'),

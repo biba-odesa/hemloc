@@ -48,6 +48,8 @@ class Auth:
         now = self.clock()
         throttle = "login-limit:" + token_digest(address)
         outcome = 'success'
+        notify_limit = False
+        known_login = None
         with self.store.transaction() as db:
             row = db.execute("SELECT body FROM local WHERE key=?", (throttle,)).fetchone()
             import json
@@ -57,6 +59,12 @@ class Auth:
             if state["count"] >= 5:
                 outcome = 'throttled'
                 user = None
+                known = Store.read(db, 'user', login)
+                known_login = known['id'] if known else None
+                if not state.get('notified'):
+                    notify_limit = True
+                    state['notified'] = True
+                    Store.write_local(db, throttle, state)
             else:
                 user = Store.read(db, "user", login)
                 try:
@@ -77,6 +85,8 @@ class Auth:
                                        'auth.login', 'session', outcome,
                                        context=login_context(address) if outcome == 'success' else None)
         if outcome == 'throttled':
+            if notify_limit and self.store.notifications:
+                self.store.notifications.login_blocked(address, known_login, state['since'] + 900 - now)
             raise audited_error(Forbidden("Too many login attempts; retry after 15 minutes"))
         if outcome == 'failed':
             raise audited_error(RuntimeError("Authentication service unavailable"))

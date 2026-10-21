@@ -37,6 +37,13 @@ def main(argv=None):
     route_ops = routes.add_subparsers(dest='operation', required=True)
     drain = route_ops.add_parser('withdraw-owned')
     drain.add_argument('--execute', action='store_true', help='Withdraw owned paths; default is a dry-run')
+    audit = sub.add_parser('audit')
+    audits = audit.add_subparsers(dest='operation', required=True)
+    for name in ('preview', 'export', 'prune'):
+        command = audits.add_parser(name)
+        command.add_argument('--output')
+        command.add_argument('--plan')
+        command.add_argument('--execute', action='store_true', help='Explicitly perform export or apply the exact prune plan')
     user = sub.add_parser('user')
     users = user.add_subparsers(dest='operation', required=True)
     users.add_parser('list')
@@ -84,6 +91,27 @@ def main(argv=None):
         elif args.command == 'routes':
             from .maintenance import withdraw_owned
             print(encode(withdraw_owned(store, execute=args.execute)))
+        elif args.command == 'audit':
+            import json
+            from .retention import preview, execute, export, write_private, validate_plan
+            if args.operation == 'export':
+                if args.execute and not args.output:
+                    raise Invalid('Export --execute requires --output')
+                print(encode(export(store, args.output if args.execute else None)))
+            elif args.operation == 'prune' and args.execute:
+                if not args.plan:
+                    raise Invalid('Prune --execute requires an existing exact --plan')
+                plan = json.loads(Path(args.plan).read_text())
+                print(encode({'removed':execute(store, plan), 'digest':plan['digest']}))
+            else:
+                plan = json.loads(Path(args.plan).read_text()) if args.plan else preview(store)
+                validate_plan(store, plan)
+                if args.output:
+                    write_private(args.output, plan)
+                from datetime import datetime
+                from zoneinfo import ZoneInfo
+                times = {k:datetime.fromtimestamp(v, ZoneInfo(config.retention_timezone)).isoformat() for k,v in plan['payload']['cutoffs'].items()}
+                print(encode({k:v for k,v in plan['payload'].items() if k!='entries'} | {'digest':plan['digest'], 'dry_run':True, 'cutoff_local':times, 'timezone':config.retention_timezone}))
         elif args.operation == 'list':
             for item in store.list('user'):
                 print(f"{item['id']}\t{item['role']}\tenabled={item['enabled']}")
@@ -103,6 +131,9 @@ def main(argv=None):
         if store is not None and args.command == 'user' and args.operation != 'list' and not getattr(exc, 'hemloc_audited', False):
             from .audit import failure_result
             store.security_event('root:cli', 'user.' + args.operation, 'user', failure_result(exc))
+        if store is not None and args.command == 'audit' and args.operation == 'prune' and args.execute:
+            from .audit import failure_result
+            store.security_event('root:cli', 'audit.prune', 'maintenance', failure_result(exc))
         message = str(exc) if isinstance(exc, (Invalid, PermissionError)) else 'Operation failed; check configuration and local service health'
         if isinstance(exc, ImportError):
             message = 'Project dependencies are missing; install them in the virtual environment'

@@ -64,6 +64,11 @@ def create_app(config, *, adapter=None, background=True):
     async def lifespan(app):
         with process_lock(config.database):
             store = Store(config)
+            from .notifications import Notifications
+            from .retention import RetentionWorker
+            notifications = Notifications(store)
+            store.notifications = notifications
+            store.on_commit = notifications.committed
             service = Service(store)
             auth = Auth(store)
             peer = PeerTransport(config)
@@ -76,10 +81,12 @@ def create_app(config, *, adapter=None, background=True):
                 from .gobgp import GoBGP
                 local_adapter = GoBGP(config, lambda candidate: service.protection().check(candidate))
             app.state.adapter = local_adapter
+            notifications.start()
             stop = asyncio.Event()
             tasks = []
             if background:
-                work = [(asn_worker.step, 30, 'asn'),
+                work = [(RetentionWorker(store).step, 30, 'retention'),
+                        (asn_worker.step, 30, 'asn'),
                         (ProtectionWorker(service).step, 60, 'protection'),
                         (Reconciler(service, local_adapter).step, 3, 'bgp'),
                         (lambda: observe_bgp(store, local_adapter), 15, 'observation')]
@@ -91,6 +98,7 @@ def create_app(config, *, adapter=None, background=True):
             finally:
                 stop.set()
                 await asyncio.gather(*tasks)
+                await asyncio.to_thread(notifications.close)
                 if hasattr(local_adapter, 'close'):
                     local_adapter.close()
     app = FastAPI(title='Hemloc', lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
@@ -98,6 +106,8 @@ def create_app(config, *, adapter=None, background=True):
     app.mount('/static', StaticFiles(directory=static), name='static')
 
     def record_http_failure(request, status):
+        if status in (400, 401, 403, 404, 405, 413, 415, 422, 429) and request.client:
+            app.state.store.notifications.suspicious(request.client.host, 'unauthorized_request' if status in (401, 403) else 'invalid_request')
         if status < 400 or getattr(request.state, 'hemloc_audited', False):
             return
         actor = getattr(request.state, 'actor', None)
@@ -350,18 +360,18 @@ def create_app(config, *, adapter=None, background=True):
         if q:values=[p for p in values if q.lower() in p.lower()]
         return page(values,'',page_number,size)
 
-    def visible_audit(actor):
-        return [e for e in app.state.store.audit_history() if actor.role=='admin' or
-                e['action']!='auth.login' or e['actor']==actor.login]
+    def history_page(actor, category, q, page_number, size, action, result, node, who, since, until):
+        from .history import query
+        return query(app.state.store, actor, category, q, page_number, size, action, result, node, who, since, until)
 
     @app.get('/api/history')
-    def history(q: str = '', page_number: int = 1, size: int = 25, actor=Depends(current)):
+    def history(q: str = '', page_number: int = 1, size: int = 25, category: str = 'blocklist',
+                action: str = '', result: str = '', node: str = '', who: str = '',
+                since: float | None = None, until: float | None = None, actor=Depends(current)):
         from .presentation import history_card
-        items=sorted(visible_audit(actor),key=lambda e:e['at'],reverse=True)
-        # Match human fields, not hidden document IDs or serialized JSON.
-        cards=[history_card(e) for e in items]
-        if q:cards=[c for c in cards if q.casefold() in ' '.join([c['action'],c['actor'],c['target'],c['result'],c['node']]).casefold()]
-        return page(cards,'',page_number,size)
+        data = history_page(actor, category, q, page_number, size, action, result, node, who, since, until)
+        data['items'] = [history_card(e) for e in data['items']]
+        return data
 
     @app.get('/api/observation')
     def observation(ip: str = '', actor=Depends(current)):
@@ -392,8 +402,8 @@ def create_app(config, *, adapter=None, background=True):
                 'matches': app.state.service.search(ip) if ip else []}
 
     @app.get('/api/audit')
-    def audit(q: str = '', page_number: int = 1, size: int = 25, actor=Depends(current)):
-        return page(sorted(visible_audit(actor), key=lambda a: a['at'], reverse=True), q, page_number, size)
+    def audit(q: str = '', page_number: int = 1, size: int = 25, category: str = 'blocklist', actor=Depends(current)):
+        return history_page(actor, category, q, page_number, size, '', '', '', '', None, None)
 
     @app.get('/api/login-history')
     def login_history(login: str = '', actor=Depends(current)):
@@ -422,16 +432,28 @@ def create_app(config, *, adapter=None, background=True):
         result = app.state.store.info()
         result['bgp'] = app.state.store.local('bgp')
         result['now'] = time.time()
+        result['capabilities'] = ['audit-prune-v2']
+        with app.state.store.connect() as db:
+            result['security_history'] = app.state.store.meta(db, 'security_history')
+            result['security_sequence'] = db.execute('SELECT COALESCE(MAX(seq),0) FROM security_audit').fetchone()[0]
+            result['security_ack'] = {'history':app.state.store.meta(db, 'peer_security_history'), 'cursor':int(app.state.store.meta(db, 'peer_security_cursor', '0'))}
         return result
 
+    def require_protocol(protocol):
+        with app.state.store.connect() as db:
+            if protocol < 2 and db.execute('SELECT 1 FROM audit_tombstones LIMIT 1').fetchone():
+                raise Conflict('Audit maintenance requires replication protocol 2; upgrade peer')
+
     @app.get('/replication/snapshot', dependencies=[Depends(peer_auth)])
-    def snapshot():
+    def snapshot(protocol: int = 1):
+        require_protocol(protocol)
         with app.state.store.connect() as db:
             app.state.store.require_master(db)
         return app.state.store.snapshot()
 
     @app.get('/replication/events', dependencies=[Depends(peer_auth)])
-    def events(history: str, cursor: int):
+    def events(history: str, cursor: int, protocol: int = 1):
+        require_protocol(protocol)
         return app.state.store.events(history, cursor)
 
     @app.get('/replication/local-audit', dependencies=[Depends(peer_auth)])

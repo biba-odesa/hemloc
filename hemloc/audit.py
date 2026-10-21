@@ -6,12 +6,13 @@ import re
 from .domain import Conflict, Forbidden, Invalid
 
 ACTIONS = frozenset({
+    'audit.prune', 'notification.failed', 'system.error', 'security.suspicious',
     'auth.login', 'auth.logout', 'auth.session', 'auth.password', 'http.request',
     'rule.create', 'rule.import', 'rule.comment', 'rule.delete',
     'routes.withdraw-owned', 'asn.refresh', 'asn.confirm', 'user.update', 'user.create', 'user.reset-password',
 })
 RESULTS = frozenset({'success', 'denied', 'invalid', 'conflict', 'failed', 'throttled'})
-OBJECTS = frozenset({'session', 'rule', 'user', 'request', 'route'})
+OBJECTS = frozenset({'session', 'rule', 'user', 'request', 'route', 'notification', 'system', 'maintenance'})
 
 
 def identity(login):
@@ -54,7 +55,7 @@ def login_context(address):
     import ipaddress
     try:
         return {'client_ip': str(ipaddress.ip_address(address))}
-    except ValueError:
+    except (ValueError, TypeError):
         return None
 
 
@@ -65,6 +66,20 @@ def validate_security_context(action, object_name, result, before, after):
         raise Invalid('Security events cannot contain before data')
     if after is None:
         return
+    if action == 'security.suspicious' and object_name == 'request' and result == 'denied':
+        if (isinstance(after, dict) and set(after) == {'client_ip', 'window_seconds', 'count', 'request_type'}
+                and login_context(after['client_ip']) == {'client_ip':after['client_ip']}
+                and type(after['window_seconds']) is int and 1 <= after['window_seconds'] <= 3600
+                and type(after['count']) is int and 1 <= after['count'] <= 100000
+                and after['request_type'] in ('invalid_request', 'unauthorized_request')):
+            return
+        raise Invalid('Invalid suspicious-access context')
+    if action == 'notification.failed' and object_name == 'notification' and result == 'failed':
+        if (isinstance(after, dict) and set(after) == {'reason', 'exit_code'}
+                and after['reason'] in ('queue_full', 'timeout', 'exit_nonzero', 'executable_unavailable')
+                and (after['exit_code'] is None or type(after['exit_code']) is int and -255 <= after['exit_code'] <= 255)):
+            return
+        raise Invalid('Invalid notification failure context')
     if (action != 'auth.login' or object_name != 'session' or result != 'success' or
             not isinstance(after, dict) or set(after) != {'client_ip'} or
             not isinstance(after['client_ip'], str) or login_context(after['client_ip']) != after):

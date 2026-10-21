@@ -100,6 +100,7 @@ async def repeat(stop, function, interval, store, label):
         try:
             await asyncio.to_thread(function)
         except Exception:
+            store.security_event('system:worker', 'system.error', 'system', 'failed')
             store.set_local('worker:' + label, {'at': time.time(), 'error': 'Background operation failed; previous state retained'})
             if label == 'bgp':
                 previous = store.local('bgp', {})

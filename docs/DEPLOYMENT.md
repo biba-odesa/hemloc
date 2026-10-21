@@ -9,7 +9,7 @@ All addresses and ASNs below and in deploy/ are documentation values.
 
 ```bash
 sudo apt-get update
-sudo apt-get install --no-install-recommends git python3.13-venv ca-certificates bgpq4
+sudo apt-get install --no-install-recommends git python3.13-venv ca-certificates tzdata bgpq4
 git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemloc.git
 cd hemloc
 ```

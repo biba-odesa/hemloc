@@ -90,15 +90,17 @@ class Replicator:
             else:
                 if peer["role"] != "master":
                     raise Conflict("No master at configured peer")
+                if peer.get("security_ack"):
+                    self.store.set_local("security_ack", peer["security_ack"])
                 local = self.store.info()
                 if local["history"] != peer.get("history"):
-                    self.store.install_snapshot(self.transport.get("/replication/snapshot"))
+                    self.store.install_snapshot(self.transport.get("/replication/snapshot", {"protocol":2}))
                     local = self.store.info()
                 try:
-                    events = self.transport.get("/replication/events", {"history": local["history"], "cursor": local["sequence"]})
+                    events = self.transport.get("/replication/events", {"history": local["history"], "cursor": local["sequence"], "protocol":2})
                     self.store.apply_events(events)
                 except NeedSnapshot:
-                    self.store.install_snapshot(self.transport.get("/replication/snapshot"))
+                    self.store.install_snapshot(self.transport.get("/replication/snapshot", {"protocol":2}))
             self.store.set_local("sync", {"ok": True, "at": time.time(), "last_success": time.time(), "error": ""})
         except (Conflict, Invalid, PeerUnavailable, OSError, ValueError) as exc:
             code = 'two_masters' if isinstance(exc, SplitBrain) else 'peer_sync_failed'
