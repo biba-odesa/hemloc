@@ -391,3 +391,16 @@ annotated v0.1.0 object and its original peeled release target are unchanged.
 This publication record is a documentation-only follow-up. Neither node has been
 updated; the next action remains separately authorized B-then-A deployment with
 retention and notifications disabled until the documented validation gates pass.
+
+
+## Optional privileged HTTPS port in the service template
+
+The tracked Hemloc unit documents two commented opt-in directives:
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE and
+AmbientCapabilities=CAP_NET_BIND_SERVICE. Uncomment both after the existing empty
+capability reset to bind ports below 1024 as the unprivileged service user.
+NoNewPrivileges and the rest of the sandbox remain enabled; defaults grant no
+capabilities. No sysctl, executable setcap, production unit or runtime changes are
+made by this repository update. When changing the actual web port, the operator
+must also update the other node's peer_url and verify replication independently.
+Static unit verification covers both the default and uncommented opt-in variant.
