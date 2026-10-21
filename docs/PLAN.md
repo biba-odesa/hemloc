@@ -381,3 +381,13 @@ notification enablement or exact real prune preview. New batch limits are option
 local [web] entries; defaults work without editing either node's INI. Retention
 and notifications remain disabled unless explicitly enabled. See BATCH_INPUT.md
 and AUDIT_RETENTION.md for protocol and transport-retention limits.
+
+Publication verification: application commit a05bce77ab2236093a2a395455138156650cb2d8
+was sent by ordinary fast-forward push to origin/main, including its preceding
+IRR diagnostics and retention/notification commits. The remote main and local
+HEAD matched after push. All eight reachable commits/158 unique blobs passed
+artifact/secret/operational-pattern review with zero findings. The existing
+annotated v0.1.0 object and its original peeled release target are unchanged.
+This publication record is a documentation-only follow-up. Neither node has been
+updated; the next action remains separately authorized B-then-A deployment with
+retention and notifications disabled until the documented validation gates pass.
