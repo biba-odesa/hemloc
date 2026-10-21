@@ -64,11 +64,11 @@ class Password(Body):
     new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
 
-def create_app(config, *, adapter=None, background=True):
+def create_app(config, *, adapter=None, background=True, observations=None):
     @asynccontextmanager
     async def lifespan(app):
         with process_lock(config.database):
-            store = Store(config)
+            store = Store(config, observations=observations)
             from .notifications import Notifications
             from .retention import RetentionWorker
             notifications = Notifications(store)

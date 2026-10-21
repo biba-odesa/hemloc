@@ -3,6 +3,7 @@ import ipaddress
 import json
 import time
 from .domain import Invalid, desired, prefix
+from .observations import volatile
 
 
 def paginate(items, number, size):
@@ -23,7 +24,8 @@ class View:
         with service.store.connect() as db:
             db.execute('BEGIN')
             self.rules = {r['id']:r for r in (json.loads(row[0]) for row in db.execute("SELECT body FROM documents WHERE kind='rule' ORDER BY id"))}
-            self.local = {row[0]:json.loads(row[1]) for row in db.execute('SELECT key,body FROM local') if not row[0].startswith('login-limit:')}
+            self.local = {row[0]:json.loads(row[1]) for row in db.execute('SELECT key,body FROM local') if not row[0].startswith('login-limit:') and not volatile(row[0])}
+            self.local.update(service.store.observations.snapshot())
             self.info = {key:service.store.meta(db,key) for key in ('history','sequence','master_id')}
             self.info['sequence'] = int(self.info['sequence'] or 0)
             self.protection = service.protection(db)

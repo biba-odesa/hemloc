@@ -22,7 +22,7 @@ class PresentationTests(unittest.TestCase):
         second=self.service.add_asn(actor,64501,'reason two')
         self.service.update_asn(actor,second['id'],['192.0.2.1/32'])
         self.cfg=replace(self.cfg,protected_prefixes=('192.0.2.1/32',))
-        self.service=Service(Store(self.cfg,activate=False))
+        self.service=Service(Store(self.cfg,activate=False,observations=self.store.observations))
         self.now=time.time()
         self.paths=[self.path('192.0.2.0/24'),self.path('192.0.2.0/24'),self.path('192.0.2.1/32'),self.path('2001:db8::9/128',99)]
         self.rib={'at':self.now,'paths':self.paths,'peers':[
@@ -86,7 +86,7 @@ class PresentationTests(unittest.TestCase):
 
     def test_replication_absence_failure_lag_and_history(self):
         self.assertEqual(View(self.service,self.now).dashboard()['peer']['status'],'Not configured')
-        service=Service(Store(replace(self.cfg,peer_url='https://peer.invalid'),activate=False))
+        service=Service(Store(replace(self.cfg,peer_url='https://peer.invalid'),activate=False,observations=self.store.observations))
         info=self.store.info()
         self.store.set_local('peer',{'at':self.now,'status':{'history':info['history'],'sequence':info['sequence']-2}})
         self.store.set_local('sync',{'ok':True,'at':self.now,'last_success':self.now})

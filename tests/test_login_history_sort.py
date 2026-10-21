@@ -118,7 +118,7 @@ class LoginHistoryTests(unittest.TestCase):
         self.store.set_local('bgp',{'error':'Reconciliation failed'})
         self.assertEqual(View(self.service,now).route_state(path['prefix']),'Failed')
         self.store.set_local('bgp',{})
-        missing=Service(Store(replace(self.cfg,v4_next_hop=''),activate=False))
+        missing=Service(Store(replace(self.cfg,v4_next_hop=''),activate=False,observations=self.store.observations))
         self.assertEqual(View(missing,now).route_state(path['prefix']),'Failed')
         self.store.set_local('protection',{'prefixes':['192.0.2.1/32'],'success':{}})
         self.assertEqual(View(self.service,now+100).route_state(path['prefix']),'Excluded by protection')

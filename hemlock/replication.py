@@ -64,6 +64,23 @@ class PeerTransport:
             raise PeerUnavailable("Peer transport failed") from None
 
 
+def observe_peer(store, transport):
+    """Read live authenticated identity; persist an acknowledgement only when changed."""
+    config = store.config
+    peer = transport.get('/replication/status')
+    if peer.get('node_id') != config.peer_node_id:
+        raise Conflict('Unexpected peer identity')
+    if peer.get('role') not in ('master', 'slave'):
+        raise Conflict('Invalid peer role')
+    now = time.time()
+    store.set_local('peer', {'at': now, 'status': peer})
+    if config.role == 'master' and peer['role'] == 'slave':
+        ack = store.local('peer_ack', {})
+        if (ack.get('history'), ack.get('sequence')) != (peer.get('history'), peer.get('sequence')):
+            store.set_local('peer_ack', {'at': now, 'history': peer.get('history'), 'sequence': peer.get('sequence')})
+    return peer
+
+
 class Replicator:
     def __init__(self, store, transport):
         self.store, self.transport = store, transport
@@ -72,16 +89,10 @@ class Replicator:
         """One bounded polling cycle; failures never erase replicated data."""
         config = self.store.config
         try:
-            peer = self.transport.get("/replication/status")
-            if peer.get("node_id") != config.peer_node_id:
-                raise Conflict("Unexpected peer identity")
-            if peer.get("role") not in ("master", "slave"):
-                raise Conflict("Invalid peer role")
-            self.store.set_local("peer", {"at": time.time(), "status": peer})
+            peer = observe_peer(self.store, self.transport)
             if config.role == "master":
                 if peer["role"] == "master":
                     raise SplitBrain("Two masters detected; isolate the former master")
-                self.store.set_local("peer_ack", {"at": time.time(), "history": peer.get("history"), "sequence": peer.get("sequence")})
                 with self.store.connect() as db:
                     audit_history = self.store.meta(db, 'peer_security_history')
                     audit_cursor = int(self.store.meta(db, 'peer_security_cursor', '0'))

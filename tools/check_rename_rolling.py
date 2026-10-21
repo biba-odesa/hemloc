@@ -1,5 +1,6 @@
 """Verified HTTPS compatibility: renamed master and actual pre-rename slave sources."""
 import importlib.util
+import argparse
 from dataclasses import asdict,replace
 import io
 from pathlib import Path
@@ -28,11 +29,15 @@ from tools.check_gobgp import port,wait_for
 
 
 def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--baseline',default='cefb7a49c2679a9d95f0c3abc566ecaf4b3530a3')
+    parser.add_argument('--package',choices=('hemloc','hemlock'),default='hemloc')
+    args=parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='hemlock-rolling-') as tmp:
         root=Path(tmp);legacy=root/'legacy';legacy.mkdir()
-        raw=subprocess.check_output(['git','archive','cefb7a49c2679a9d95f0c3abc566ecaf4b3530a3','hemloc'])
+        raw=subprocess.check_output(['git','archive',args.baseline,args.package])
         with tarfile.open(fileobj=io.BytesIO(raw)) as tar:tar.extractall(legacy,filter='data')
-        name='pre_rename_compatibility';spec=importlib.util.spec_from_file_location(name,legacy/'hemloc/__init__.py',submodule_search_locations=[str(legacy/'hemloc')])
+        name='pre_rename_compatibility';spec=importlib.util.spec_from_file_location(name,legacy/args.package/'__init__.py',submodule_search_locations=[str(legacy/args.package)])
         module=importlib.util.module_from_spec(spec);sys.modules[name]=module;spec.loader.exec_module(module)
         old={part:importlib.import_module(name+'.'+part) for part in ('config','store','web','replication')}
         subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',str(root/'tls.key'),'-out',str(root/'tls.crt'),'-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
@@ -62,7 +67,7 @@ def main():
             execute(a,preview(a));br.step();ar.step()
             assert a.list('audit')==b.list('audit');assert a.get('audit',doc['id']) is None
             b.install_snapshot(a.snapshot());assert a.list('audit')==b.list('audit')
-            print('PASS: renamed master + actual cefb7a4 slave over verified HTTPS; unchanged header/cookie/node IDs, partial batch journal, slave auth outbox, prune-v2 and schema-2 snapshot. No working nodes contacted.')
+            print(f'PASS: current master + actual {args.baseline[:8]} slave over verified HTTPS; unchanged header/cookie/node IDs, partial batch journal, slave auth outbox, prune-v2 and schema-2 snapshot. No working nodes contacted.')
         finally:
             for server in servers:server.should_exit=True
             for thread in threads:thread.join(15);assert not thread.is_alive()

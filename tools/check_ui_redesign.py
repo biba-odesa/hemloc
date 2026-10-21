@@ -47,7 +47,7 @@ def main():
                       {'address':'192.0.2.12','description':'','session_state':1,'admin_state':2}],
              'export':{'192.0.2.10':{'prefixes':['192.0.2.0/24','192.0.2.1/32']},'192.0.2.11':{'prefixes':[]}}}
         store.set_local('rib',rib)
-        server=uvicorn.Server(uvicorn.Config(create_app(cfg,adapter=object(),background=False),host='127.0.0.1',port=port(),log_level='error',access_log=False))
+        server=uvicorn.Server(uvicorn.Config(create_app(cfg,adapter=object(),background=False,observations=store.observations),host='127.0.0.1',port=port(),log_level='error',access_log=False))
         thread=threading.Thread(target=server.run);thread.start()
         try:
             wait_for(lambda:server.started)

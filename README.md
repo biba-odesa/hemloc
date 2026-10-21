@@ -98,8 +98,11 @@ results; [batch input and limits](docs/BATCH_INPUT.md) documents retry, audit an
 single-message notification behavior. The updated light theme uses blue surfaces;
 the dark palette is retained.
 
-The corrected name is **Hemlock** (Python package/CLI `hemlock`, version 0.2.0).
+The corrected name is **Hemlock** (Python package/CLI `hemlock`, version 0.2.1).
 Existing active `hemloc` directories, user/service, CLI alias and wire identities
 are retained for safe upgrades. See [compatible rename](docs/RENAMING.md); do not
 mass-rename an existing deployment or use the historical v0.1.0 tag for this update.
 Synchronization is green only for fresh **In sync** with zero lag, otherwise red.
+
+Hemlock 0.2.1 keeps current operational observations in process memory; see
+[observation storage and rolling upgrades](docs/OBSERVATIONS.md).

@@ -40,3 +40,6 @@ Read-only UI update projects Peer.timers / Timers.state / TimersState.uptime (go
 
 Release builds use the hash-locked requirements-build.lock in a dedicated venv.
 Do not use --no-build-isolation with an unverified development backend version.
+
+Hemlock 0.2.1 changes local observation storage only; dependencies, GoBGP API,
+replication protocol and persisted-state schema remain unchanged.

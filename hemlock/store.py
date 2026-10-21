@@ -13,6 +13,7 @@ import time
 import uuid
 
 from .domain import Conflict, Duplicate, Forbidden, Invalid, NeedSnapshot, asn, prefix
+from .observations import Observations, volatile
 
 SCHEMA = 1
 KINDS = {"rule", "user", "audit"}
@@ -112,8 +113,9 @@ class ClosingConnection(sqlite3.Connection):
 
 
 class Store:
-    def __init__(self, config, activate=True):
+    def __init__(self, config, activate=True, *, observations=None):
         self.config = config
+        self.observations = observations if observations is not None else Observations()
         self.on_commit = None
         self.notifications = None
         path = Path(config.database)
@@ -218,7 +220,7 @@ class Store:
 
     @staticmethod
     def set_meta(db, key, value):
-        db.execute("INSERT INTO meta VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, str(value)))
+        db.execute("INSERT INTO meta VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE meta.value IS NOT excluded.value", (key, str(value)))
 
     def require_master(self, db):
         if self.config.role != "master" or self.meta(db, "role") != "master":
@@ -244,15 +246,22 @@ class Store:
             return [json.loads(r[0]) for r in db.execute("SELECT body FROM documents WHERE kind=? ORDER BY id", (kind,))]
 
     def local(self, key, default=None):
+        if volatile(key):
+            return self.observations.get(key, default)
         with self.connect() as db:
             row = db.execute("SELECT body FROM local WHERE key=?", (key,)).fetchone()
             return json.loads(row[0]) if row else default
 
     @staticmethod
     def write_local(db, key, value):
-        db.execute("INSERT INTO local VALUES(?,?) ON CONFLICT(key) DO UPDATE SET body=excluded.body", (key, encode(value)))
+        if volatile(key):
+            raise Invalid('Observations cannot be persisted')
+        db.execute("INSERT INTO local VALUES(?,?) ON CONFLICT(key) DO UPDATE SET body=excluded.body WHERE local.body IS NOT excluded.body", (key, encode(value)))
 
     def set_local(self, key, value):
+        if volatile(key):
+            self.observations.set(key, value)
+            return
         with self.transaction() as db:
             self.write_local(db, key, value)
 

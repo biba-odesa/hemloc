@@ -75,6 +75,27 @@ class CLITests(unittest.TestCase):
                 self.assertIsNone(self.store.get('user','rejected'))
                 self.assertEqual(self.store.get('user','policy-user'),saved)
 
+    def test_prune_cli_probes_live_peer_without_shared_process_cache(self):
+        import json,time,uuid
+        from hemlock.retention import preview,write_private,CAPABILITY
+        from hemlock.store import encode
+        from tests.test_observations import Transport
+        cfg=replace(self.cfg,peer_url='https://peer.invalid')
+        slave=Store(replace(cfg,role='slave',node_id='b',peer_node_id='a',database=self.tmp.name+'/b.sqlite'))
+        event={'id':str(uuid.uuid4()),'at':time.time()-10*86400,'node':'a','actor':'anonymous','action':'http.request','object':'request','before':None,'after':None,'result':'invalid'}
+        with self.store.transaction() as db:
+            op={'kind':'audit','id':event['id'],'doc':event}
+            self.store.operation(db,op);self.store.append_journal(db,[op])
+        self.store.ingest_security(slave.local_security_events())
+        slave.install_snapshot(self.store.snapshot())
+        plan=self.tmp.name+'/peer-plan.json';write_private(plan,preview(self.store))
+        transport=Transport(slave)
+        with patch('hemlock.replication.PeerTransport',return_value=transport),patch.object(transport,'get',wraps=transport.get) as get:
+            result,_,error,_=self.invoke(['audit','prune','--plan',plan,'--execute'],config=cfg)
+            self.assertEqual((result,error),(0,''))
+            get.assert_called_once_with('/replication/status')
+        self.assertIsNone(self.store.get('audit',event['id']))
+
     def test_nonroot_cli_is_rejected_before_password_prompt(self):
         result, output, error, prompts = self.invoke(['user','list'],root=False)
         self.assertEqual(result,1)

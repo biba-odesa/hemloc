@@ -455,3 +455,62 @@ release tag is moved. The final documentation commit is scanned again before a
 normal main push. Next action: operator upgrades the second node using the same
 source revision and the existing paths, then verifies the corrected name and
 green In sync / zero lag. No feature/config changes are required by this update.
+
+## Local external notification handler checkpoint
+
+An operator-requested, site-local Talk adapter is installed outside the repository
+and enabled on the existing master. It consumes only UTF-8 subject/body JSON on
+stdin, uses a separate restricted credential file, verified HTTPS and explicit
+proxy configuration, refuses redirects and makes one delivery attempt without
+retries. Source copies and local test/deployment artifacts are excluded from Git.
+No credentials or adapter implementation are added to the public delivery.
+
+Six isolated checks cover Unicode/newlines, inert shell metacharacters, input
+validation, single-attempt transport/OCS failures, redirects, explicit proxy and
+missing private settings. Installed service-user access and equivalent systemd
+sandbox execution are checked with mocked transport and sockets forbidden; no
+real test message is sent. Only the application service is restarted to read its
+configuration; HTTPS readiness and unchanged GoBGP process are verified.
+Actual chat delivery is intentionally untested, per operator instruction. Next:
+observe the first genuine event without generating production test events.
+
+## Process-local observations checkpoint (0.2.1)
+
+Implemented a fixed-key, locked RAM observation store with independent copies for
+GoBGP RIB/export, reconciliation status, live peer/sync and worker diagnostics.
+Store APIs route only these keys to memory; existing on-disk observation rows are
+ignored, not removed. Web/presentation use the process cache. Cold startup and
+restored old rows cannot claim Applied, Exported or healthy sync. Durable data,
+protection, security acknowledgements/outbox, cursors, retention and snapshot
+metadata remain in SQLite. Unchanged metadata/local values are not rewritten;
+peer acknowledgement persistence occurs only when history/sequence changes.
+
+CLI prune now obtains its own authenticated direct HTTPS peer observation before
+the unchanged transactional protocol/cursor/outbox checks. No protocol/schema,
+configuration, reconciliation/observation intervals or route behavior changes.
+See OBSERVATIONS.md. Fixtures explicitly share a cache only when modeling one
+application process. Reopened stores represent cold processes by default.
+
+Checks so far: complete original suite plus new RAM/concurrency/SQL/restart tests;
+separate CLI live-peer prune; real verified two-node HTTPS audit workflow;
+current master with actual 0.2.0 source slave; browser UI in both themes.
+Synthetic 50-cycle/664-route disk-backed comparison: physical writes reduced
+62.03%, wall time 4.614 -> 3.511 seconds, CPU essentially unchanged. Active data
+and the real notification handler are not used for mutations/tests.
+
+Next: final full suite and isolated GoBGP recovery checks, clean source/rollback
+wheels, secret/history scans, commit and authorized normal main push. Only after
+successful push install the tested wheel on the existing master, restart only the
+application, verify HTTPS/sync/unchanged GoBGP and document the exact result.
+No deployment to the second node; provide manual same-commit commands.
+
+Final development verification: 142 tests discovered, 141 passed, one opt-in live
+unit skipped; isolated real GoBGP verification passed separately. The full
+loopback HTTPS/two-daemon lab passed background reconciliation, slave protection
+divergence, daemon restart recovery, auth/CA/SAN rejection, journal replay,
+restart, promotion and old-master replacement without restarting GoBGP on failover.
+The separate audit workflow, actual 0.2.0 slave rolling compatibility, and both-theme
+browser checks passed. A clean wheel installed into a separate venv with the
+runtime hash lock passes pip check, canonical/legacy CLI and complete web imports.
+Previous 0.2.0 source rollback wheel is prepared locally. Publication/deployment
+remain the next authorized actions; no active data was used in these tests.

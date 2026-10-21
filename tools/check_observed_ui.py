@@ -35,7 +35,7 @@ def main():
         Service(store).save_user(Actor('lab','admin'),'viewer',role='guest',password_hash=password_hash(password))
         rib['at']=time.time()
         store.set_local('rib',rib)
-        server=uvicorn.Server(uvicorn.Config(create_app(config,adapter=object(),background=False),host='127.0.0.1',port=port(),log_level='error',access_log=False))
+        server=uvicorn.Server(uvicorn.Config(create_app(config,adapter=object(),background=False,observations=store.observations),host='127.0.0.1',port=port(),log_level='error',access_log=False))
         thread=threading.Thread(target=server.run)
         thread.start()
         try:

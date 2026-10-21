@@ -1,7 +1,7 @@
 # Hemlock: corrected name and compatible upgrade
 
 The canonical application name is **Hemlock**, Python distribution/package
-`hemlock`, version 0.2.0, and CLI `hemlock`. UI, Info EN/RU/UK, notifications,
+`hemlock`, version 0.2.1, and CLI `hemlock`. UI, Info EN/RU/UK, notifications,
 help/error messages and documentation use that spelling. Canonical templates are
 `deploy/hemlock.service` and `deploy/hemlock.example.ini`.
 
@@ -67,7 +67,7 @@ systemctl stop hemloc
   --no-cache-dir --force-reinstall "$HEMLOCK_STAGE"
 /opt/hemloc/.venv/bin/python -m pip check
 /opt/hemloc/.venv/bin/python -I -c \
-  'import hemlock; from pathlib import Path; print(hemlock.__version__); assert hemlock.__version__ == "0.2.0"; assert "Hemlock" in (Path(hemlock.__file__).parent / "static/index.html").read_text()'
+  'import hemlock; from pathlib import Path; print(hemlock.__version__); assert hemlock.__version__ == "0.2.1"; assert "Hemlock" in (Path(hemlock.__file__).parent / "static/index.html").read_text()'
 /opt/hemloc/.venv/bin/hemloc --help
 systemctl start hemloc
 systemctl is-active hemloc

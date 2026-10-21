@@ -102,6 +102,11 @@ def main(argv=None):
                 if not args.plan:
                     raise Invalid('Prune --execute requires an existing exact --plan')
                 plan = json.loads(Path(args.plan).read_text())
+                if config.peer_url:
+                    from .replication import PeerTransport, observe_peer
+                    # A CLI process cannot borrow the running application's RAM cache.
+                    # Probe directly over verified TLS before the transactional gate.
+                    observe_peer(store, PeerTransport(config))
                 print(encode({'removed':execute(store, plan), 'digest':plan['digest']}))
             else:
                 plan = json.loads(Path(args.plan).read_text()) if args.plan else preview(store)
