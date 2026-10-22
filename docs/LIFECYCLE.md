@@ -5,6 +5,13 @@
 Прежние установки сначала проходят [MIGRATION_LEGACY.md](MIGRATION_LEGACY.md).
 Нельзя запускать installer поверх работающей системы. Команды — root.
 
+## Выбранный переход существующей пары на 0.4.0
+
+Порядок A с сохранением данных + чистая B только с INI/TLS/secret:
+[PAIR_UPGRADE_040.md](PAIR_UPGRADE_040.md). Общий A-only перенос БД из
+MIGRATION_LEGACY.md не относится к новой B. Ни fresh installer, ни обычный updater
+не являются скрытой миграцией существующего master.
+
 ## Backup
 
 Backup CLI использует SQLite backup API, не `cp` открытого SQLite:

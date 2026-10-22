@@ -33,7 +33,8 @@ Canonical paths and identities: `/opt/hemlock` (code/venv), `/etc/hemlock`,
 - [Fresh slave and secure pairing](docs/INSTALL_B.md)
 - [Root installer](deploy/install-debian13.sh), with `--help` and read-only `--check`
 - [Update, backup, rollback and manual role changes](docs/LIFECYCLE.md)
-- [Explicit migration of previous installations](docs/MIGRATION_LEGACY.md)
+- [Existing pair: retain master, install slave afresh](docs/PAIR_UPGRADE_040.md)
+- [Explicit existing-master path migration](docs/MIGRATION_LEGACY.md)
 
 Install Git before cloning. Select an immutable published 0.4.0+ tag or full
 commit, verify it, then run the installer with the role, unique node/peer IDs,

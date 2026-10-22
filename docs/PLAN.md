@@ -757,3 +757,37 @@ Next: select the published full 0.4.0 commit (until a separately approved tag ex
 for fresh installation; review the coordinated migration guide before changing any
 existing node. Standard rolling updates apply only within the canonical compatible
 line. Both old release tags remain immutable; no production deployment is implied.
+
+
+## Pair transition clarification: retain A, fresh B
+
+Documentation-only follow-up before operator migration. Added PAIR_UPGRADE_040.md
+with the actual selected workflow: preserve existing master data/protection and
+GoBGP, install slave on clean Debian using the installer, transfer only adapted
+local INI, its TLS/CA and replication secret. No old slave DB/WAL/sessions/outbox/
+cursor/venv or separate protection cache transfer. The old slave must drain its
+security outbox before removal; ordinary zero lag alone is insufficient. New
+slave receives rules/users/ASN sets/shared audit by snapshot/journal. Protection
+initializes independently; historical source networks, if needed, are explicitly
+agreed in protected_prefixes of the transferred INI, otherwise slave announcements
+remain disabled. The optional cache-transfer maintenance procedure is moved out
+of INSTALL_B.md to PROTECTION_TRANSFER.md, not part of the chosen reinstall.
+
+MIGRATION_LEGACY.md now explicitly applies its own-DB restore steps to A only.
+Fresh installer is not an app-only reinstall on a host with existing GoBGP; it
+refuses that case. Preserving GoBGP A does not imply zero interruption of the old
+slave daemon when its OS is replaced. No duplicate IP/node identity on old/new B.
+
+Explained synchronization outage from old B shutdown until both compatible
+endpoints are running and new snapshot/journal catch-up finishes. Defined fresh
+In sync/zero lag/history+cursor/last-success checks on both nodes and separate
+protection readiness. Documented that changing the identity HTTP header was an
+unnecessary compatibility break introduced by naming standardization, not a TLS,
+security, storage or GoBGP requirement. No dual-header support is claimed or added.
+No application/protocol/config/production operation is performed in this follow-up.
+
+Verification: inspected actual PeerTransport sender and peer_auth receiver;
+reviewed all changed public instructions for old-slave DB/cache transfer and
+legacy path ambiguity, checked internal documentation links and Git diff. No
+mutation tests needed for text-only changes. Next: publish the clarified docs;
+operator review/provisioning/migration remain separate authorized actions.

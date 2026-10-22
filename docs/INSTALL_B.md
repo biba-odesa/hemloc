@@ -9,6 +9,15 @@
 Сеть/SSH/firewall не меняются автоматически. Результат: приложение и отдельный
 GoBGP готовы, реальные соседи выключены, `announcements=no`.
 
+## Новая B вместо прежней B
+
+Для существующей пары используйте [PAIR_UPGRADE_040.md](PAIR_UPGRADE_040.md).
+Новая B получает только адаптированный локальный INI, собственные TLS-файлы/CA
+и общий secret. Старые БД/cache/cursor/sessions/venv не переносить; все пути
+канонические. Users/rules/audit придут с A через snapshot/journal.
+Раздел 5 описывает локальную инициализацию protection без переноса cache файла.
+На A сохраняются его БД и накопленный protection; GoBGP A не перезапускается.
+
 ## 1. Проверки и исходник
 
 ```bash
@@ -209,7 +218,7 @@ runuser -u hemlock -- /opt/hemlock/.venv/bin/python -c \
 
 Редактор мог поменять права — повторять проверку после каждой правки.
 
-## 5. Пустая БД и перенос protection (не рабочей БД)
+## 5. Пустая БД и локальная инициализация protection
 
 На slave, пока сервис остановлен:
 
@@ -221,33 +230,19 @@ chown -R hemlock:hemlock /var/lib/hemlock
 **Не создавайте администратора.** Правила, пользователи/хеши и общий аудит придут
 через snapshot/journal. Сессии, конфиг и protection не реплицируются.
 
-Для cache имеется отдельный проверяемый maintenance tool, **не встроенная
-CLI-команда**. На master он только читает SQLite в read-only транзакции.
-Все protected ASN должны иметь successful cache metadata. Если ASN добавили в
-INI, сначала отдельно перечитайте конфиг restart Hemlock и дождитесь успешного
-refresh; новый INI сам по себе инициализацию не доказывает.
+### Выбранная переустановка B: без переноса cache
 
-**Master/root:**
+Не экспортируйте/импортируйте protection.json для этого сценария. Согласуйте
+локальный INI B: protected ASN/явные сети и исторические protected сети A,
+которые должны сохраниться на B (последние внести как protected_prefixes).
+После старта B его protection worker должен самостоятельно успешно раскрыть
+каждый configured protected ASN. IRR требует прямой TCP/43. Старый cache B и
+БД B не копируются. Snapshot не переносит protection. До проверки эффективной
+защиты announcements=no; успешная репликация сама по себе не доказывает защиту.
 
-```bash
-/opt/hemlock/.venv/bin/python /opt/hemlock/tools/protection_transfer.py export \
-  --config /etc/hemlock/hemlock.ini --file /root/hemlock-transfer/protection.json
-sha256sum /root/hemlock-transfer/protection.json
-```
-
-Файл должен быть новым (существующий не перезаписывается). Передайте JSON через
-закрытый проверенный SSH/SFTP на slave; сверяйте SHA256 отдельно. Это приватные
-операционные данные, не Git. На **slave/root**, файл доступен только root:
-
-```bash
-/opt/hemlock/.venv/bin/python /opt/hemlock/tools/protection_transfer.py import \
-  --config /etc/hemlock/hemlock.ini --file /root/hemlock-transfer/protection.json
-```
-
-Tool требует slave, announcements=no и lock остановленного приложения; проверяет
-source node/config/digest/готовность ASN, затем **union** cache, ничего не сокращая.
-Не переносит правила/пользователей/БД. Не заменяйте накопленный cache новым IRR
-ответом: исторические сети могут исчезнуть из текущего ответа источника.
+Свежий IRR-ответ не воспроизводит автоматически накопленный protection A. Если
+состав исторических сетей ещё не согласован в INI B, это блокер B-анонсов,
+а не повод очистить cache A или объявить bootstrap завершённым.
 
 ## 6. GoBGP без рабочих соседей и первый запуск
 
