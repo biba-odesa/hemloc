@@ -660,3 +660,25 @@ or restart it. No real updater/systemctl/production command was run. An operator
 must prepare the /opt/hemlock venv and matching systemd ExecStart before use;
 moving a venv alone does not rewrite embedded shebangs. Active paths/configs and
 services were not modified. This script follows main, not the immutable v0.3.0 tag.
+
+## Authorized existing-master update to 0.3.0
+
+Operator separately authorized updating the existing master after the slave's
+successful manual update. Installed a wheel built from published commit 7795940
+and verified first in an isolated venv. Existing installation paths were retained;
+the new /opt/hemlock updater was not run against the legacy /opt/hemloc prefix.
+Stopped/restarted only the application and made a normal private SQLite backup.
+
+Verified installed runtime metadata 0.3.0, pip check, CA-validated HTTPS and served
+version-footer assets; unchanged configured/saved master role, rules/users/local
+protection during installation, config/unit/notification file digests, GoBGP PID
+and both-family RIB. Fresh background state confirmed the complete desired set.
+Live authenticated slave status matched generation/cursor with zero lag. No test
+login, notification, rule mutation, role change, GoBGP control operation or path
+migration was performed. Private backup paths and detailed results remain only
+under ignored var/update-a-0.3.0 and the node's private data directory.
+
+Next: operator can refresh the browser to see the local installed-version footer.
+No additional config/role changes are required; deliberate failover remains a
+separate operation using docs/ROLE_TRANSITIONS.md. This deployment checkpoint is
+recorded locally; no additional publication is required for the installed source.
