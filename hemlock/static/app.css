@@ -36,3 +36,5 @@ html[data-theme=light] input,html[data-theme=light] select,html[data-theme=light
 html[data-theme=light] { --sync-good:#126238; --sync-bad:#962633; }
 #peer-state.sync-healthy { color:var(--sync-good); }
 #peer-state.sync-unhealthy { color:var(--sync-bad); }
+
+.app-version{color:var(--muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}

@@ -32,11 +32,18 @@ def main():
             with sync_playwright() as pw:
                 browser=pw.chromium.launch(executable_path='/usr/bin/chromium-headless-shell',headless=True)
                 page=browser.new_page(viewport={'width':1440,'height':1050},timezone_id='Europe/Kyiv');errors=[];page.on('pageerror',lambda error:errors.append(str(error)))
-                page.goto(f'http://127.0.0.1:{server.config.port}');page.locator('#login-form input[name=login]').fill('guest');page.locator('#login-form input[name=password]').fill(password);page.locator('#login-form button').click();expect(page.locator('#workspace')).to_be_visible()
+                page.goto(f'http://127.0.0.1:{server.config.port}');expect(page.locator('#app-version')).to_be_hidden();page.locator('#login-form input[name=login]').fill('guest');page.locator('#login-form input[name=password]').fill(password);page.locator('#login-form button').click();expect(page.locator('#workspace')).to_be_visible()
+                identity=page.request.get(f'http://127.0.0.1:{server.config.port}/api/me').json()['application']
+                expected=f"Hemlock v{identity['version']}" if identity['version'] else 'Hemlock · Version unavailable'
+                expect(page.locator('#app-version')).to_have_text(expected)
+                assert page.locator('#app-version').evaluate("el=>el.nextElementSibling.id")=='logout'
+                expect(page.locator('#app-version')).to_have_attribute('title',f"Build commit: {identity['build_commit']}" if identity['build_commit'] else '')
                 before=store.snapshot();cached=store.local('protection')
                 page.locator('nav button[data-view=info]').click()
                 for theme in ('dark','light'):
                     if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme').click()
+                    expect(page.locator('#app-version')).to_be_visible()
+                    page.locator('#navigation').screenshot(path=str(output/f'version-{theme}.png'))
                     for lang,title,mtr,caution,empty in [('EN','About Hemlock','Checking a block','keeping BGP isolated','No results'),('RU','О Hemlock','Проверка блокировки','сохраняя изоляцию BGP','Нет результатов'),('UK','Про Hemlock','Перевірка блокування','зберігаючи ізоляцію BGP','Немає результатів')]:
                         page.locator('.language-switch').get_by_role('button',name=lang,exact=True).click()
                         article=page.locator('.info-page');expect(article.locator('h2').first).to_have_text(title)
@@ -63,6 +70,8 @@ def main():
                 page.set_viewport_size({'width':390,'height':844});page.locator('.info-states').screenshot(path=str(output/'mobile-states.png'))
                 assert before==store.snapshot(),'Info modified shared documents'
                 assert cached==store.local('protection'),'Info modified local protection'
+                page.locator('#logout').click();expect(page.locator('#login-panel')).to_be_visible()
+                expect(page.locator('#app-version')).to_be_hidden()
                 assert not errors,errors
                 browser.close()
             print('PASS: EN/RU/UK in dark/light, six agreed sections/MTR/ordered failover steps/BGP isolation caveat, one six-row English-key State table, removed duplicate/announcements/path text, live-node config+cache union/ASN expansion time, collapsed 25-row filtered/clamped pagination, timezone/mobile and no data writes.')

@@ -65,3 +65,8 @@ servers; no working login, IRR refresh or GoBGP adapter is used for UI tests.
 .venv/bin/python -W error::ResourceWarning -m unittest discover -s tests -v
 .venv/bin/python tools/check_info_ui.py --directory var/info-new-run
 ```
+
+The signed-in sidebar shows the local backend's installed package version above
+Sign out. The optional tooltip shows a build commit only when pip's installed VCS
+metadata contains it. A normal wheel may have no commit metadata. This information
+is node-local and does not come from the Git checkout or replicated data.

@@ -259,10 +259,12 @@ def create_app(config, *, adapter=None, background=True, observations=None):
 
     @app.get('/api/me')
     def me(request: Request, actor=Depends(current)):
+        from .installed import application_identity
         _, csrf = app.state.auth.session(request.cookies.get('hemloc_session', ''))
         return {'login': actor.login, 'role': actor.role, 'node_role': config.role, 'node_id': config.node_id, 'csrf': csrf,
                 'password_change_node': config.node_id if config.role=='master' else config.peer_node_id,
-                'batch_max_items':config.batch_max_items, 'request_max_bytes':config.request_max_bytes}
+                'batch_max_items':config.batch_max_items, 'request_max_bytes':config.request_max_bytes,
+                'application':application_identity()}
 
     @app.post('/api/logout')
     def logout(request: Request, actor=Depends(mutation)):

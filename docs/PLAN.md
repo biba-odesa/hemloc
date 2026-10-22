@@ -627,3 +627,19 @@ secret/operational-pattern and wheel-content scans found zero findings. No
 runtime files or private deployment instructions are staged. Full reachable Git
 history is scanned before/after the local public-identity commit; values are never
 printed. Installation/push remain pending explicit future authorization.
+
+## Runtime version footer
+
+Added a quiet sidebar version immediately above Sign out. Authenticated /api/me
+returns local installed hemlock distribution metadata, not checkout/Git data or a
+JavaScript version constant. Optional PEP 610 VCS commit metadata is displayed in
+a tooltip; ordinary wheels without embedded provenance omit the commit. Missing
+installed metadata is explicitly unavailable, never inferred from source version.
+Each node supplies its own response. Login/logout hides and clears the footer.
+
+Verification: isolated API/metadata tests (17 passed plus the new guest-specific
+API check), real Chromium EN/RU/UK dark/light sidebar positioning and metadata
+agreement, signed-out hiding, mobile layout and existing Info checks. Dark/light
+sidebar screenshots inspected. No production data, config, service or routes
+changed. This UI-only patch retains package version 0.3.0 and does not move its
+existing release tag. Operator authorizes a normal main push, not deployment.

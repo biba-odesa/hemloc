@@ -41,6 +41,16 @@ class WebTests(unittest.TestCase):
         self.assertEqual(result.status_code, 200)
         return {'x-csrf-token':result.json()['csrf']}
 
+    def test_running_backend_identity_is_authenticated_and_available_to_guest(self):
+        from unittest.mock import patch
+        self.assertNotEqual(self.client.get('/api/me').status_code,200)
+        self.login('guest')
+        identity={'version':'9.8.7','build_commit':'a'*40}
+        with patch('hemlock.installed.application_identity',return_value=identity):
+            response=self.client.get('/api/me')
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.json()['application'],identity)
+
     def test_history_tabs_are_server_side_authorized_with_filtered_counts(self):
         headers = self.login()
         self.client.post('/api/rules/manual', json={'value':'192.0.2.99','comment':'visible'}, headers=headers)
