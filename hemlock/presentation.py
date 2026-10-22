@@ -21,6 +21,9 @@ class View:
     def __init__(self, service, now=None):
         self.service, self.config = service, service.config
         self.now = time.time() if now is None else now
+        from .transition import RoleTransition, TERMINAL
+        self.transition = RoleTransition(self.config).status()
+        self.transition_pending = bool(self.transition and self.transition['phase'] not in TERMINAL)
         with service.store.connect() as db:
             db.execute('BEGIN')
             self.rules = {r['id']:r for r in (json.loads(row[0]) for row in db.execute("SELECT body FROM documents WHERE kind='rule' ORDER BY id"))}
@@ -33,7 +36,7 @@ class View:
         self.rib = self.local.get('rib') or {}
         self.bgp = self.local.get('bgp') or {}
         attempt = self.local.get('worker:observation') or {}
-        self.rib_known = bool(self.rib.get('at')) and not (attempt.get('error') and attempt.get('at',0)>self.rib['at'])
+        self.rib_known = bool(self.rib.get('at')) and not self.transition_pending and not (attempt.get('error') and attempt.get('at',0)>self.rib['at'])
         self.rib_stale = bool(self.rib.get('at')) and self.now-self.rib['at']>45
         self.rib_fresh = self.rib_known and not self.rib_stale
         self.by_prefix = {}
@@ -112,10 +115,12 @@ class View:
         protection=self.local.get('protection') or {}
         ready=all(str(a) in protection.get('success',{}) for a in self.config.protected_asns)
         errors=[]
+        if self.transition_pending:
+            errors.append('Role transition cleanup pending; route application is fenced. ' + (self.transition.get('error') or ''))
         if not ready:errors.append('Protection initialization incomplete; new announcements are blocked.')
         errors.extend(v['error'] for v in (self.local.get('protection_schedule') or {}).values() if v.get('error'))
         if self.bgp.get('error'):errors.append(self.bgp['error'])
-        return {'peer':{'name':self.config.peer_node_id,'status':status,'healthy':status=='In sync','last_success':success,'lag':lag},
+        return {'role_transition':self.transition,'peer':{'name':self.config.peer_node_id,'status':status,'healthy':status=='In sync','last_success':success,'lag':lag},
                 'blocked':counts(applied) if applied is not None else None,'required':counts(self.routes),
                 'pending':len(pending)+len(withdrawals) if pending is not None else None,'withdrawals':len(withdrawals),'failed':len(failed) if failed is not None else None,
                 'excluded':len({e['prefix'] for e in self.excluded}),

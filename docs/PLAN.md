@@ -567,3 +567,63 @@ a normal main push. No application source, dependencies, active
 paths, configs, DBs, node IDs, services or BGP sessions are changed. No deployment
 or application restart is needed. The second node is not contacted; its operator
 can update origin in its existing Git checkout independently.
+
+## Startup role transitions — 0.3.0 development checkpoint
+
+Implemented before normal worker startup: slave-to-master preserves data and
+creates a fresh generation, archiving the previous journal instead of deleting
+it. Master-to-slave persists a private external crash fence, explicitly drains
+IPv4/IPv6 paths on the dedicated daemon, checkpoints/closes SQLite, moves the old
+DB to a unique nonoverwriting backup, and installs an empty slave DB retaining
+only local protection/cache schedule. Node/route-owner/config/TLS are unchanged.
+Old rules/users/audit/sessions/outbox stay in backup and are not transferred.
+
+A conservative read-only absence probe requires inactive/dead configured systemd
+unit, zero PIDs, unrestricted host process visibility with no canonical daemon,
+and refused loopback endpoints. Unknown gRPC or partial withdrawal fails closed.
+Confirmed absence permits DB replacement with durable pending cleanup. Both
+reconciliation and AddPath are fenced until recovery drains and verifies both
+families empty. No daemon/peer lifecycle operation or root helper is introduced.
+Direct Store activation cannot bypass demotion. Ordinary same-role restarts retain
+data; ordinary offline slaves retain routes. Masters still reject foreign state.
+
+Documented explicit rollback with transition status/checkpoint/reset-after-restore
+commands, owner locking and exact backup validation. Added Info EN/RU/UK, version
+0.3.0, optional [gobgp] gobgp_service_unit (default gobgp.service), artifact excludes,
+and a short B-then-A update guide in docs/ROLE_TRANSITIONS.md. No wire-protocol or
+dependency change. Both nodes must run this version before deliberate role changes;
+do not downgrade while a transition fence is pending.
+
+Verification on isolated data only:
+- Full suite: 160 discovered, 159 passed, one opt-in live check skipped; real
+  isolated GoBGP checks were run separately. CLI follow-up: all 10 passed.
+- Crash injection after every persisted phase and both link/unlink boundaries;
+  real child-process death during old/staging SQLite transactions and hot-journal
+  recovery; busy WAL readers, free-space/permission/backup failures and resume.
+- Real peer-free loopback GoBGP: IPv4/IPv6 addressed withdrawal (including other
+  local ownership), empty-RIB verification, partial delete failure/resume,
+  uncertain gRPC refusal, stopped daemon DB replacement and delayed recovery,
+  cleanup before applying only the new slave snapshot. Daemon PID unchanged by
+  migration; stopped-daemon evidence is injected from the harness's own process.
+- Two loopback HTTPS nodes and separate test GoBGP daemons: replication, offline
+  restart, promotion/new history, old-master startup demotion and replacement,
+  protection divergence and daemon recovery. No production nodes contacted.
+- Actual 0.2.1 slave + new master over verified HTTPS: partial batch journal,
+  security outbox, retention-v2 replay and schema-2 snapshot remained compatible.
+  This compatibility does not grant old versions the new demotion safeguards.
+- Chromium Info EN/RU/UK in dark/light themes, mobile, dynamic local protection
+  pagination and route State descriptions passed without production mutations.
+- A wheel was built and installed into an isolated existing locked-dependency
+  test venv; final package/import/artifact/history results are recorded below.
+
+Production A/B, their configs, DBs, services, BGP and roles have not been changed.
+No push or deployment is authorized for this stage. Next: review the local commit,
+then separately authorize publication/update; preserve roles during B-then-A
+upgrade and validate HTTPS/replication/protection/routes before any role switch.
+
+Final package validation: isolated wheel install, pip check, isolated canonical/
+legacy package and full web/transition imports passed (0.3.0). Staged artifact,
+secret/operational-pattern and wheel-content scans found zero findings. No
+runtime files or private deployment instructions are staged. Full reachable Git
+history is scanned before/after the local public-identity commit; values are never
+printed. Installation/push remain pending explicit future authorization.

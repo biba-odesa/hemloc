@@ -1,4 +1,6 @@
 """Read-only protection presentation and actual snapshot preservation semantics."""
+from tests.role_helpers import demote
+
 from contextlib import closing
 from dataclasses import replace
 import json
@@ -51,7 +53,7 @@ class InfoTests(unittest.TestCase):
         cfg=replace(self.cfg,role='slave',node_id='b',peer_node_id='a',database=str(Path(self.tmp.name)/'b.sqlite'))
         prior=Store(replace(cfg,role='master'))
         Service(prior).add_manual(self.actor,'203.0.113.1','Old branch retained in backup')
-        slave=Store(cfg);service=Service(slave)
+        slave=demote(cfg);service=Service(slave)
         slave.set_local('protection',{'prefixes':['198.51.100.0/24'],'success':{'64496':10}})
         old=slave.snapshot();local=slave.local('protection');settings=service.config
         backup=slave.install_snapshot(master.snapshot())

@@ -1,4 +1,6 @@
 """Security audit invariants with two stores and an explicit peer outbox."""
+from tests.role_helpers import demote
+
 
 import copy
 from dataclasses import replace
@@ -140,7 +142,7 @@ class AuditTests(unittest.TestCase):
         promoted = Store(replace(self.slave_cfg,role='master'))
         self.assertEqual(len(promoted.list('audit')),1)
         self.service.add_manual(ADMIN,'192.0.2.0/24','discarded branch')
-        old = Store(replace(self.cfg,role='slave'))
+        old = demote(replace(self.cfg,role='slave'))
         old.install_snapshot(promoted.snapshot())
         self.assertEqual(old.list('rule'),[])
         self.assertNotIn('discarded branch',encode(old.audit_history()))

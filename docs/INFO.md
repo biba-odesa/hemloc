@@ -20,16 +20,18 @@ the existing journal after the snapshot. No business-rule branch merge occurs.
 An isolated test checks a nonempty divergent old branch in the backup, replacement
 with master documents, integrity_check, local configuration and protection retention.
 
-**Required clarification to the supplied return procedure:** setting role=slave
-and restarting Hemlock does not stop the independent GoBGP service, clear its RIB,
-or gate route reconciliation until a new snapshot is received. Both roles work
-from their last saved data. Restoring full connectivity before synchronization
-can therefore export stale old routes. Info in all three languages now says to
-restore replication access while keeping BGP isolated, verify full sync/routes,
-and only then restore BGP connectivity. This is a documentation clarification;
-no failover/reconciliation/network policy behavior was changed and no network
-isolation or routing action was performed by this update. The supported original
-backup/replace/local-protection preservation statements remain published.
+**Startup behavior from 0.3.0:** promotion retains shared/local data and creates a
+new generation, archiving the old journal. Demotion now runs before ordinary
+workers: a durable external fence, addressed dedicated-daemon withdrawal/empty-RIB
+verification, a closed checkpointed original-file backup and fresh slave DB with
+only local protection carried over. Confirmed daemon absence leaves cleanup
+pending; uncertain gRPC/failed deletion does not certify success. No old rules or
+browser sessions are retained in the active DB. Ordinary slave restarts retain
+data. Info EN/RU/UK describes these distinctions; ROLE_TRANSITIONS.md documents
+recovery, absence evidence, permissions and rollback. Keeping BGP isolated until
+current synchronization/route checks is still an operator responsibility. No
+network isolation, production deployment or live routing action is performed by
+this development update.
 
 ## Dynamic read-only protection
 

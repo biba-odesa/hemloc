@@ -43,7 +43,9 @@ def main():
         subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',str(root/'tls.key'),'-out',str(root/'tls.crt'),'-subj','/CN=localhost','-addext','subjectAltName=IP:127.0.0.1'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         (root/'secret').write_text(secrets.token_urlsafe(48));p1,p2=port(),port()
         cfg=Config(database=str(root/'a.sqlite'),node_id='a',peer_node_id='b',peer_url=f'https://127.0.0.1:{p2}',host='127.0.0.1',port=p1,cert=str(root/'tls.crt'),key=str(root/'tls.key'),ca=str(root/'tls.crt'),token_file=str(root/'secret'),protected_asns=(),metadata_enabled=False)
-        bcfg=old['config'].Config(**asdict(replace(cfg,role='slave',node_id='b',peer_node_id='a',database=str(root/'b.sqlite'),port=p2,peer_url=f'https://127.0.0.1:{p1}')))
+        bcfg_values=asdict(replace(cfg,role='slave',node_id='b',peer_node_id='a',database=str(root/'b.sqlite'),port=p2,peer_url=f'https://127.0.0.1:{p1}'))
+        import dataclasses
+        bcfg=old['config'].Config(**{k:v for k,v in bcfg_values.items() if k in {f.name for f in dataclasses.fields(old['config'].Config)}})
         a,b=Store(cfg),old['store'].Store(bcfg);actor=Actor('fixture','admin');password='a1'+secrets.token_urlsafe(24)
         Service(a).save_user(actor,'viewer',role='guest',password_hash=password_hash(password))
         with a.transaction() as db:

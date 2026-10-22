@@ -68,6 +68,15 @@ def create_app(config, *, adapter=None, background=True, observations=None):
     @asynccontextmanager
     async def lifespan(app):
         with process_lock(config.database):
+            from .transition import RoleTransition
+            startup_adapter = adapter
+            if startup_adapter is None:
+                from .gobgp import GoBGP
+                startup_adapter = GoBGP(config)
+            try:
+                await asyncio.to_thread(RoleTransition(config).prepare, startup_adapter)
+            finally:
+                if adapter is None:startup_adapter.close()
             store = Store(config, observations=observations)
             from .notifications import Notifications
             from .retention import RetentionWorker
@@ -453,7 +462,8 @@ def create_app(config, *, adapter=None, background=True, observations=None):
         if rib:
             rib['age_seconds'] = time.time() - rib['at']
             rib['stale'] = rib['age_seconds'] > 45
-        return {'local': info, 'peer': peer, 'sync': store.local('sync'), 'replicated': replicated,
+        from .transition import RoleTransition
+        return {'role_transition':RoleTransition(config).status(),'local': info, 'peer': peer, 'sync': store.local('sync'), 'replicated': replicated,
                 'replication': {'configured': bool(config.peer_url), 'peer_node_id': config.peer_node_id,
                                 'status': 'configured' if config.peer_url else 'not_configured'},
                 'announcements_enabled': config.announcements,
@@ -491,7 +501,9 @@ def create_app(config, *, adapter=None, background=True, observations=None):
 
     @app.get('/replication/status', dependencies=[Depends(peer_auth)])
     def replication_status():
+        from .transition import RoleTransition
         result = app.state.store.info()
+        result['role_transition'] = RoleTransition(config).status()
         result['bgp'] = app.state.store.local('bgp')
         result['now'] = time.time()
         result['capabilities'] = ['audit-prune-v2']

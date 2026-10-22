@@ -31,6 +31,14 @@ def main(argv=None):
     sub.add_parser('serve')
     sub.add_parser('init-db')
     sub.add_parser('desired')
+    transition = sub.add_parser('transition')
+    transitions = transition.add_subparsers(dest='operation', required=True)
+    transitions.add_parser('status')
+    check = transitions.add_parser('checkpoint')
+    check.add_argument('--execute', action='store_true', help='Checkpoint/detach current SQLite file with application stopped; default dry-run')
+    reset = transitions.add_parser('reset-after-restore')
+    reset.add_argument('backup')
+    reset.add_argument('--execute', action='store_true', help='Reset the fence only after validating an exact offline master backup restore')
     backup = sub.add_parser('backup')
     backup.add_argument('destination')
     routes = sub.add_parser('routes')
@@ -72,6 +80,25 @@ def main(argv=None):
             with process_lock(config.database):
                 Store(config)
             print('Database initialized; set ownership for the service user before starting Hemlock')
+            return 0
+        if args.command == 'transition':
+            from .transition import RoleTransition, checkpoint
+            transition = RoleTransition(config)
+            owner_path = Path(config.database) if Path(config.database).exists() else transition.path
+            if owner_path.exists():
+                owner = owner_path.stat()
+                if owner.st_uid != 0:
+                    os.setgroups([]);os.setgid(owner.st_gid);os.setuid(owner.st_uid)
+            if args.operation == 'status':
+                state = transition.read()
+                print(encode({'transition':transition.status(), 'backup':state.get('backup') if state else None, 'staging':state.get('staging') if state else None}))
+            else:
+                with process_lock(config.database):
+                    if args.operation == 'checkpoint':
+                        if args.execute:checkpoint(Path(config.database))
+                        print(encode({'mode':'execute' if args.execute else 'dry-run','checkpointed':bool(args.execute)}))
+                    else:
+                        print(encode(transition.reset_after_restore(args.backup, args.execute)))
             return 0
         if not Path(config.database).exists():
             raise Invalid('Run init-db before maintenance commands')

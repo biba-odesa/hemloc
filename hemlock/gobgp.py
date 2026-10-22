@@ -162,6 +162,8 @@ class GoBGP:
         return result
 
     def add(self, candidate, attrs):
+        from .transition import RoleTransition
+        RoleTransition(self.config).assert_add_allowed()
         if not self.config.announcements:
             raise Conflict('Announcements are disabled')
         self.initialize()
@@ -217,6 +219,38 @@ class GoBGP:
         return {'paths': paths, 'peers': peers, 'export': exports,
                 'limitations': 'Local RIB and Adj-RIB-Out do not confirm downstream router acceptance',
                 'api_version': API_VERSION}
+
+    def confirmed_absent(self):
+        from .gobgp_presence import confirmed_absent
+        return confirmed_absent(self.config)
+
+    def drain_for_transition(self):
+        """Explicit startup demotion on a dedicated daemon; addressed paths only.
+
+        Unlike normal reconciliation this operation also withdraws local paths
+        without our marker. It never sends an empty DeletePath request and never
+        changes peers or the daemon lifecycle.
+        """
+        from .transition import RoleTransition, TERMINAL, DrainFailure
+        state = RoleTransition(self.config).read()
+        if self.config.role != 'slave' or not state or state['phase'] in TERMINAL:
+            raise Conflict('Dedicated drain requires a pending slave transition')
+        try:paths = self.paths()
+        except Exception as error:raise DrainFailure('inspection', error) from None
+        try:
+            for path in paths:
+                if not path.local:
+                    raise Conflict('Nonlocal paths in dedicated RIB; cannot certify empty state')
+                candidates = [p for p in self.paths(path.prefix) if p.key == path.key and p.local]
+                if not candidates:continue
+                if len(candidates) != 1:raise Conflict('Ambiguous dedicated path')
+                observed = self.m['Path'].FromString(candidates[0].wire)
+                family = self.m['Family'](afi=1 if ipaddress.ip_network(path.prefix).version==4 else 2, safi=1)
+                self.delete_path(self.m['DeletePathRequest'](table_type=1,family=family,path=observed),timeout=self.config.timeout)
+        except Exception as error:raise DrainFailure('withdrawal', error) from None
+        try:
+            if self.paths():raise Conflict('Dedicated RIB is not empty after withdrawal')
+        except Exception as error:raise DrainFailure('verification', error) from None
 
     def close(self):
         if self.channel is not None:

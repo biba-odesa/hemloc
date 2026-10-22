@@ -1,9 +1,12 @@
 """CLI service-layer tests. Root identity/UID switching are mocked explicitly."""
+from tests.role_helpers import demote
+
 
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
 from dataclasses import replace
 import importlib.util
 import io
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -33,7 +36,10 @@ class CLITests(unittest.TestCase):
 
     def invoke(self, arguments, root=True, config=None, passwords=('new-test-password1','new-test-password1'), hasher=None):
         output, error = io.StringIO(), io.StringIO()
+        from hemlock.transition import private_file
+        real_uid = os.geteuid()
         with ExitStack() as stack:
+            stack.enter_context(patch('hemlock.transition.private_file',side_effect=lambda path:private_file(path,uid=real_uid)))
             stack.enter_context(patch('hemlock.cli.load',return_value=config or self.cfg))
             stack.enter_context(patch('hemlock.cli.os.geteuid',return_value=0 if root else 1000))
             for method in ('setgroups','setgid','setuid'):
@@ -96,6 +102,31 @@ class CLITests(unittest.TestCase):
             get.assert_called_once_with('/replication/status')
         self.assertIsNone(self.store.get('audit',event['id']))
 
+    def test_transition_status_and_explicit_restore_reset_require_stopped_application(self):
+        import json,shutil
+        from hemlock.transition import RoleTransition
+        from hemlock.workers import process_lock
+        cfg=replace(self.cfg,role='slave')
+        demote(cfg)
+        state=RoleTransition(cfg).read()
+        result,output,_,_=self.invoke(['transition','status'],config=cfg)
+        self.assertEqual(result,0);self.assertEqual(json.loads(output)['transition']['phase'],'complete')
+        result,output,_,_=self.invoke(['transition','checkpoint'],config=cfg)
+        self.assertEqual(result,0);self.assertFalse(json.loads(output)['checkpointed'])
+        with process_lock(cfg.database):
+            self.assertEqual(self.invoke(['transition','checkpoint','--execute'],config=cfg)[0],1)
+        result,output,_,_=self.invoke(['transition','checkpoint','--execute'],config=cfg)
+        self.assertEqual(result,0);self.assertTrue(json.loads(output)['checkpointed'])
+        current=Path(cfg.database)
+        current.rename(current.with_name('current-before-restore.sqlite'))
+        shutil.copy2(state['backup'],current)
+        command=['transition','reset-after-restore',state['backup']]
+        result,output,_,_=self.invoke(command,config=self.cfg)
+        self.assertEqual(result,0);self.assertFalse(json.loads(output)['restored'])
+        with process_lock(cfg.database):self.assertEqual(self.invoke(command+['--execute'],config=self.cfg)[0],1)
+        result,output,_,_=self.invoke(command+['--execute'],config=self.cfg)
+        self.assertEqual(result,0);self.assertTrue(json.loads(output)['restored'])
+
     def test_nonroot_cli_is_rejected_before_password_prompt(self):
         result, output, error, prompts = self.invoke(['user','list'],root=False)
         self.assertEqual(result,1)
@@ -125,7 +156,7 @@ class CLITests(unittest.TestCase):
 
     def test_slave_reset_is_denied_without_prompt_and_only_local_audit(self):
         cfg = replace(self.cfg,role='slave')
-        slave = Store(cfg)
+        slave = demote(cfg)
         before = slave.info()
         result,output,error,prompts = self.invoke(['user','reset-password','admin'],config=cfg)
         self.assertEqual((result,prompts),(1,0))

@@ -1,3 +1,4 @@
+from tests.role_helpers import demote
 import copy
 from dataclasses import replace
 import json
@@ -139,7 +140,7 @@ class StoreTests(unittest.TestCase):
         with self.assertRaises(Conflict):
             self.master.install_snapshot(new_master.snapshot())
         self.manual('203.0.113.0/24')
-        returned = Store(replace(self.a, role='slave'))
+        returned = demote(replace(self.a, role='slave'))
         returned.install_snapshot(new_master.snapshot())
         self.assertEqual(returned.list('rule'), [fresh])
         with self.assertRaises(Forbidden):

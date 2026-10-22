@@ -6,6 +6,7 @@
 - Never connect to production routers, install/start services, or change network/firewall/SSH without explicit operator authorization.
 - Tests use isolated temporary databases, loopback services and documentation prefixes. Never mutate working data during tests.
 - Never restart GoBGP on a rule change. Touch only demonstrably owned paths; no blanket withdrawals.
+- Explicit startup master-to-slave transition is the sole dedicated-daemon exception: withdraw individually observed local paths, including unmarked paths, and verify both-family empty RIB before lifting the durable fence. No daemon/session lifecycle changes or systemd control permissions.
 - Master-only writes use the shared service layer. Data, audit and journal commit atomically. Slaves never merge divergent branches.
 - Protection prohibits equality and more-specific candidates, allows covering aggregates, and retains cached data on upstream failures.
 - Empty or anomalous ASN updates require confirmation of the exact proposed set. Preserve working data on source/network failures.

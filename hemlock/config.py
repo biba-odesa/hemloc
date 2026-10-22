@@ -59,6 +59,7 @@ class Config:
     retention_timezone: str = "Europe/Kyiv"
     retention_batch_size: int = 200
     notifications_enabled: bool = False
+    gobgp_service_unit: str = "gobgp.service"
     notification_script: str = "/usr/sbin/notify_script"
     notification_timeout_seconds: float = 15.0
     notification_blocklist_changes: bool = True
@@ -71,6 +72,9 @@ class Config:
     suspicious_cooldown_seconds: int = 900
 
     def validate(self):
+        import re
+        if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.@-]*\.service', self.gobgp_service_unit):
+            raise Invalid('Invalid GoBGP read-only status unit name')
         if not 1 <= self.batch_max_items <= 10000 or not 16384 <= self.request_max_bytes <= 16777216:
             raise Invalid("batch_max_items must be 1..10000; request_max_bytes 16384..16777216")
         from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -135,7 +139,7 @@ def load(path: str) -> Config:
         "protection": ("protected_asns", "protected_prefixes"),
         "irr": ("irr_command", "irr_server", "irr_sources", "irr_refresh_days", "timeout", "change_ratio", "change_absolute", "max_prefixes"),
         "metadata": ("metadata_enabled",),
-        "gobgp": ("announcements", "grpc_target", "v4_next_hop", "v6_next_hop", "local_pref", "community", "owner"),
+        "gobgp": ("announcements", "grpc_target", "gobgp_service_unit", "v4_next_hop", "v6_next_hop", "local_pref", "community", "owner"),
     }
     defaults, values = Config(), {}
     for section, fields in mapping.items():

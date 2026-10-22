@@ -31,6 +31,7 @@ const infoTexts = {
         [
           "Якщо master недоступний, slave продовжує підтримувати блокування та BGP-анонси за останніми отриманими даними. Редагувати списки та користувачів у цьому режимі не можна.",
           "Очікуйте відновлення master. Якщо він повернувся з актуальною базою і ролі вузлів не змінювалися, робота продовжується у звичайному режимі. Master також можна відновити з резервної копії на іншому гіпервізорі.",
+          "Підвищення slave до master зберігає базу, правила, користувачів, аудит і локальний protection. Створюється нове покоління master; попередній журнал залишається в локальному архіві. Старий master спочатку потрібно ізолювати. Автоматичного вибору переможця або об’єднання двох master немає.",
           "Якщо резервна копія не містить останніх змін, master неможливо відновити або потрібно негайно змінити блокування:",
           {
             "list": [
@@ -50,7 +51,7 @@ const infoTexts = {
             ]
           },
           {
-            "note": "Важливо: сама зміна ролі на slave не зупиняє GoBGP та не відкликає старі маршрути. Якщо до завершення синхронізації відновити також BGP-з’єднання, вузол може тимчасово експортувати застарілі маршрути. Доступ для реплікації потрібно відновлювати окремо від BGP."
+            "note": "Якщо збережений master запускається з role=slave, до фонових завдань адресно відкликаються виявлені локальні IPv4/IPv6-маршрути виділеного GoBGP та перевіряється порожня RIB. GoBGP і його сесії не перезапускаються. Стара БД переноситься в унікальний backup, створюється нова БД slave. Старі правила, користувачі, аудит і браузерні сесії не переносяться; локальний protection зберігається, актуальні дані надходять від нового master. Якщо локальний daemon підтверджено зупинений, заміна БД продовжується зі збереженою необхідністю очищення. Після відновлення gRPC очищення має завершитися до застосування актуальних маршрутів slave. Невизначена помилка gRPC або помилка відкликання не доводить порожнечу RIB. Незавершений перехід потребує уваги оператора та безпечно продовжується під час запуску. Звичайний перезапуск slave зберігає його дані, зокрема коли master недоступний."
           },
           "Під час повної пересинхронізації стара база резервується, а репліковані дані замінюються актуальними даними нового master. Локальна конфігурація та protection зберігаються. Старі й нові гілки змін автоматично не об’єднуються.",
           "Новий slave можна розгорнути пізніше за інструкцією. Із чинним master потрібно узгодити protected ASN і префікси, накопичений protection cache, параметри IRR, атрибути маршрутів та налаштування авторизації й довіри реплікації. Новий вузол повинен мати власні node ID, локальні адреси та сертифікат із приватним ключем. Правила, користувачі й історія надходять через реплікацію.",
@@ -93,7 +94,7 @@ const infoTexts = {
               ],
               [
                 "Unknown",
-                "Немає достовірного спостереження поточного стану локальної RIB GoBGP."
+                "Немає достовірного спостереження поточного стану локальної RIB GoBGP. За незавершеного очищення зміни ролі застосування також не підтверджене."
               ],
               [
                 "Stale",
@@ -162,6 +163,7 @@ const infoTexts = {
         [
           "If the master is unavailable, the slave continues maintaining blocks and BGP announcements using the last data received. Lists and users cannot be edited in this mode.",
           "Wait for the master to recover. If it returns with an up-to-date database and node roles have not changed, normal operation resumes. The master can also be restored from a backup on another hypervisor.",
+          "Promoting a slave to master preserves its database, rules, users, audit and local protection. A new master history is created; the previous journal is retained in a local archive. The old master must first be isolated. There is no automatic winner selection or merging of two masters.",
           "If the backup does not contain the latest changes, the master cannot be restored, or blocks must be changed immediately:",
           {
             "list": [
@@ -181,7 +183,7 @@ const infoTexts = {
             ]
           },
           {
-            "note": "Important: changing the role to slave does not stop GoBGP or withdraw old routes. If BGP connectivity is restored before synchronization finishes, the node may temporarily export stale routes. Restore replication access separately from BGP."
+            "note": "When a saved master starts with role=slave, startup withdraws individually discovered local IPv4/IPv6 paths from the dedicated GoBGP and verifies an empty RIB. GoBGP and its sessions are not restarted. The old database is moved to a unique backup and a fresh slave database is created. Old rules, users, audit and browser sessions are not carried over; local protection is retained and current data arrives from the new master. If the local daemon is confirmed stopped, database replacement continues with a persistent cleanup requirement. After gRPC recovers, cleanup must succeed before current slave routes can be applied. An uncertain gRPC failure or a failed withdrawal is not proof of an empty RIB. An unfinished transition needs operator attention and safely resumes at startup. An ordinary slave restart keeps its data, including when the master is unavailable."
           },
           "During full resynchronization, the old database is backed up and replicated data is replaced with current data from the new master. Local configuration and protection are preserved. Old and new branches of changes are not merged automatically.",
           "A new slave can be deployed later following the instructions. Coordinate protected ASNs and prefixes, the accumulated protection cache, IRR parameters, route attributes, and replication authentication and trust settings with the current master. The new node must have its own node ID, local addresses, and certificate with a private key. Rules, users and history arrive through replication.",
@@ -224,7 +226,7 @@ const infoTexts = {
               ],
               [
                 "Unknown",
-                "There is no reliable observation of the current local GoBGP RIB state."
+                "There is no reliable observation of the current local GoBGP RIB state. A role-transition cleanup fence also leaves application unconfirmed."
               ],
               [
                 "Stale",
@@ -293,6 +295,7 @@ const infoTexts = {
         [
           "Если master недоступен, slave продолжает поддерживать блокировки и BGP-анонсы по последним полученным данным. Редактировать списки и пользователей в этом режиме нельзя.",
           "Ожидайте восстановления master. Если он вернулся с актуальной базой и роли узлов не менялись, работа продолжается в обычном режиме. Master также можно восстановить из резервной копии на другом гипервизоре.",
+          "Повышение slave до master сохраняет базу, правила, пользователей, аудит и локальный protection. Создаётся новое поколение master; прежний журнал остаётся в локальном архиве. Старый master сначала необходимо изолировать. Автоматического выбора победителя или объединения двух master нет.",
           "Если резервная копия не содержит последних изменений, master невозможно восстановить или необходимо немедленно изменить блокировки:",
           {
             "list": [
@@ -312,7 +315,7 @@ const infoTexts = {
             ]
           },
           {
-            "note": "Важно: сама смена роли на slave не останавливает GoBGP и не отзывает старые маршруты. Если до завершения синхронизации восстановить также BGP-соединения, узел может временно экспортировать устаревшие маршруты. Доступ для репликации нужно восстанавливать отдельно от BGP."
+            "note": "Если сохранённый master запускается с role=slave, до фоновых задач адресно отзываются обнаруженные локальные IPv4/IPv6-маршруты выделенного GoBGP и проверяется пустая RIB. GoBGP и его сессии не перезапускаются. Старая БД переносится в уникальный backup, создаётся новая БД slave. Старые правила, пользователи, аудит и браузерные сессии не переносятся; локальный protection сохраняется, актуальные данные поступают от нового master. Если локальный daemon подтверждённо остановлен, замена БД продолжается с сохранённой необходимостью очистки. После восстановления gRPC очистка должна завершиться до применения актуальных маршрутов slave. Неопределённая ошибка gRPC или ошибка отзыва не доказывает пустоту RIB. Незавершённый переход требует внимания оператора и безопасно продолжается при запуске. Обычный рестарт slave сохраняет его данные, в том числе при недоступном master."
           },
           "При полной пересинхронизации старая база резервируется, а реплицируемые данные заменяются актуальными данными нового master. Локальная конфигурация и protection сохраняются. Старые и новые ветки изменений автоматически не объединяются.",
           "Новый slave можно развернуть позже по инструкции. С действующим master необходимо согласовать protected ASN и префиксы, накопленный protection cache, параметры IRR, атрибуты маршрутов и настройки авторизации и доверия репликации. У нового узла должны быть собственные node ID, локальные адреса и сертификат с приватным ключом. Правила, пользователи и история поступают через репликацию.",
@@ -355,7 +358,7 @@ const infoTexts = {
               ],
               [
                 "Unknown",
-                "Нет достоверного наблюдения текущего состояния локальной RIB GoBGP."
+                "Нет достоверного наблюдения текущего состояния локальной RIB GoBGP. При незавершённой очистке смены роли применение также не подтверждено."
               ],
               [
                 "Stale",
@@ -401,6 +404,6 @@ const routeStateDescriptions={
   'Pending':'Desired, with a fresh local observation, but no matching local path. No stored reconciliation error and a next-hop is configured. This can include disabled announcements; it does not mean installation succeeded.',
   'Failed':'Desired and freshly observed, with no matching local path, and either a stored reconciliation error or no next-hop configured for this family. A stored error can affect multiple pending prefixes.',
   'Excluded by protection':'The source prefix is absent from the desired set after local protected-prefix or protected-ASN checks. An old local path may still await withdrawal.',
-  'Unknown':'Desired, but no timestamped local RIB observation is available, or a newer observation attempt failed. Application is not confirmed.',
+  'Unknown':'Desired, but no timestamped local RIB observation is available, or a newer observation attempt failed, or a role-transition cleanup fence is active. Application is not confirmed.',
   'Stale':'Desired, but the last timestamped local RIB observation is older than 45 seconds. Old local presence does not confirm current application.'
 };

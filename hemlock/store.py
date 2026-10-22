@@ -114,6 +114,8 @@ class ClosingConnection(sqlite3.Connection):
 
 class Store:
     def __init__(self, config, activate=True, *, observations=None):
+        from .transition import RoleTransition
+        RoleTransition(config).check_store(activate)
         self.config = config
         self.observations = observations if observations is not None else Observations()
         self.on_commit = None
@@ -176,11 +178,18 @@ class Store:
                 if not self.meta(db, 'security_history'):
                     self.set_meta(db, 'security_history', str(uuid.uuid4()))
                 if config.role == "master" and previous != "master":
+                    old_history = self.meta(db, 'history')
+                    if old_history or db.execute('SELECT 1 FROM journal LIMIT 1').fetchone():
+                        # Keep every previous journal row, including an empty journal.
+                        # A new generation gets its own active sequence namespace.
+                        archive = 'journal_history_' + uuid.uuid4().hex
+                        db.execute('CREATE TABLE IF NOT EXISTS journal_generations(history TEXT NOT NULL, table_name TEXT PRIMARY KEY)')
+                        db.execute('ALTER TABLE journal RENAME TO ' + archive)
+                        db.execute('INSERT INTO journal_generations VALUES(?,?)', (old_history, archive))
+                        db.execute('CREATE TABLE journal(seq INTEGER PRIMARY KEY, body TEXT NOT NULL)')
                     self.set_meta(db, "history", str(uuid.uuid4()))
                     self.set_meta(db, "sequence", "0")
                     self.set_meta(db, "master_id", config.node_id)
-                    db.execute("DELETE FROM journal")
-                    db.execute("DELETE FROM local WHERE key IN ('peer_ack', 'sync')")
                 self.set_meta(db, "role", config.role)
                 if config.role == 'master':
                     self.publish_security(db)
@@ -195,9 +204,13 @@ class Store:
 
     @contextmanager
     def transaction(self):
+        from .transition import RoleTransition
+        transition = RoleTransition(self.config)
+        transition.assert_write_allowed()
         db = self.connect()
         try:
             db.execute("BEGIN IMMEDIATE")
+            transition.assert_write_allowed()
             db.audit_events = []
             yield db
             db.commit()

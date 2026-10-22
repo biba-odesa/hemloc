@@ -43,3 +43,7 @@ Do not use --no-build-isolation with an unverified development backend version.
 
 Hemlock 0.2.1 changes local observation storage only; dependencies, GoBGP API,
 replication protocol and persisted-state schema remain unchanged.
+
+Hemlock 0.3.0 adds startup role transitions and a private sidecar fence. Runtime
+dependencies, GoBGP v4 API and replication wire protocol stay unchanged. Local
+SQLite archives old promotion journals; deploy both nodes before role changes.

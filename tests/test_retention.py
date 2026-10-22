@@ -1,4 +1,6 @@
 """Isolated audit classification, exact maintenance, transport and calendar contracts."""
+from tests.role_helpers import demote
+
 import copy
 from dataclasses import replace
 from datetime import datetime
@@ -89,7 +91,7 @@ class RetentionTests(unittest.TestCase):
         self.b.install_snapshot(self.a.snapshot())
         promoted = Store(replace(self.b.config, role='master'))
         self.assertNotIn(deleted['id'], {d['id'] for d in promoted.audit_history()})
-        old = Store(replace(self.cfg, role='slave'))
+        old = demote(replace(self.cfg, role='slave'))
         old.install_snapshot(promoted.snapshot())
         self.assertEqual(old.audit_history(), promoted.audit_history())
 

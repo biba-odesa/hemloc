@@ -46,6 +46,8 @@ class Reconciler:
 
     def step(self):
         config = self.service.config
+        from .transition import RoleTransition
+        RoleTransition(config).guard(self.adapter)
         routes, exclusions, info = self.service.route_snapshot()
         status = {"at": time.time(), "enabled": config.announcements, "desired": len(routes),
                   "confirmed": [], "excluded": len(exclusions), "error": "", "router_acceptance": "unknown"}

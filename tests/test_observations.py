@@ -1,4 +1,6 @@
 """Volatile observations cannot become durable truth or weaken replication gates."""
+from tests.role_helpers import demote
+
 from dataclasses import asdict, replace
 from pathlib import Path
 import json
@@ -183,7 +185,7 @@ class ObservationTests(unittest.TestCase):
         promoted=Store(replace(bcfg,role='master'))
         self.assertIsNotNone(promoted.get('audit',pending['id']))
         self.assertEqual(promoted.local('protection')['prefixes'],['198.51.100.0/24'])
-        old=Store(replace(self.cfg,role='slave'))
+        old=demote(replace(self.cfg,role='slave'))
         old.install_snapshot(promoted.snapshot())
         self.assertEqual(old.list('rule'),promoted.list('rule'))
 
