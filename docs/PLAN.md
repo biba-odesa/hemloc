@@ -643,3 +643,20 @@ agreement, signed-out hiding, mobile layout and existing Info checks. Dark/light
 sidebar screenshots inspected. No production data, config, service or routes
 changed. This UI-only patch retains package version 0.3.0 and does not move its
 existing release tag. Operator authorizes a normal main push, not deployment.
+
+## Operator-requested update.sh
+
+Added executable root-level update.sh with the approved update sequence and
+/opt/hemlock installation prefix. It fetches refs/heads/main, resolves FETCH_HEAD
+(also works without origin/main), archives the exact fetched commit, builds a
+wheel, stops only hemloc, takes a SQLite API backup, installs locked dependencies
+and the wheel, checks the package, then starts/checks hemloc. Config/database paths
+and the existing service name remain hemloc. Bash pipefail prevents an archive
+failure from being hidden by tar. The script locates its own Git checkout.
+
+Verified bash syntax and isolated command-stub success/build-failure/backup-failure
+paths. A build failure does not stop the service; a backup failure does not proceed
+or restart it. No real updater/systemctl/production command was run. An operator
+must prepare the /opt/hemlock venv and matching systemd ExecStart before use;
+moving a venv alone does not rewrite embedded shebangs. Active paths/configs and
+services were not modified. This script follows main, not the immutable v0.3.0 tag.

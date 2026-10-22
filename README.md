@@ -111,3 +111,20 @@ Version 0.3.0 adds [resumable startup role transitions](docs/ROLE_TRANSITIONS.md
 A deliberate master-to-slave change resets active replicated data after backup
 and fences routing until dedicated GoBGP cleanup is verified. Upgrade both nodes
 before using this workflow; ordinary role-preserving restarts retain their data.
+
+## Updating an existing installation
+
+The executable `update.sh` fetches and installs the latest `origin` main using
+`FETCH_HEAD`; a local `origin/main` tracking ref is not required. Run it as root
+from a trusted checkout (`./update.sh`). It expects the venv at
+`/opt/hemlock/.venv`, while retaining service `hemloc`, config
+`/etc/hemloc/hemloc.ini` and backups under `/var/lib/hemloc`. It restarts only the
+application, never GoBGP. Update the slave first, verify replication, then master.
+
+Prepare the installation prefix and matching systemd ExecStart separately before
+using the script. Moving an existing venv alone leaves embedded executable paths
+unchanged; recreate it with the locked dependencies or otherwise validate its
+entry points. The script does not migrate paths or edit config/roles/units.
+If an update fails after stopping the application, it stays stopped for recovery;
+do not blindly start an incomplete installation. The backup and staging directory
+are retained. Follow the version's migration notes before installing newer main.
