@@ -10,7 +10,7 @@ All addresses and ASNs below and in deploy/ are documentation values.
 ```bash
 sudo apt-get update
 sudo apt-get install --no-install-recommends git python3.13-venv ca-certificates tzdata bgpq4
-git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemloc.git
+git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemlock.git hemloc
 cd hemloc
 ```
 
@@ -24,7 +24,7 @@ sudo useradd --system --user-group --no-create-home --shell /usr/sbin/nologin go
 sudo install -d -o root -g hemloc -m 0750 /etc/hemloc
 sudo install -d -o root -g gobgp -m 0750 /etc/gobgp
 sudo install -d -o hemloc -g hemloc -m 0700 /var/lib/hemloc
-sudo git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemloc.git /opt/hemloc
+sudo git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemlock.git /opt/hemloc
 sudo python3 -m venv /opt/hemloc/.venv
 sudo /opt/hemloc/.venv/bin/python -m pip install --require-hashes -r /opt/hemloc/requirements.lock
 sudo /opt/hemloc/.venv/bin/python -m pip install --require-hashes -r /opt/hemloc/requirements-build.lock

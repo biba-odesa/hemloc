@@ -14,8 +14,8 @@ Existing deployments keep their active identities and paths:
 - replication header `X-Hemloc-Node`, cookie `hemloc_session` and browser theme key.
 
 These remaining legacy strings are compatibility identifiers, not misspelled
-branding. They must not be replaced blindly during a rolling upgrade. The existing
-GitHub repository URL and immutable v0.1.0 tag keep their historical spelling.
+branding. They must not be replaced blindly during a rolling upgrade. The GitHub
+repository is now `biba-odesa/hemlock`; its identity, history and immutable v0.1.0 tag are preserved. GitHub redirects the former repository URL.
 Existing `hemloc` imports are identity-preserving aliases of `hemlock` modules;
 the old `hemloc` console entry points to `hemlock.cli:main`. Do not move the
 working directories, rename SQLite files/users/node IDs or restart GoBGP.
@@ -88,3 +88,28 @@ On completion hard-refresh the browser, verify the corrected name, green In sync
 and zero lag on both nodes. Nonhealthy states must remain red. No config key
 changes are required; retention/notifications/announcements retain their existing
 values. This rename does not enable any feature or clean any audit.
+
+## GitHub repository rename
+
+The canonical remote is https://github.com/biba-odesa/hemlock.git. The repository
+was renamed in place; no repository was deleted/recreated and no history or tag
+was rewritten. Existing installation directories are independent of this URL.
+Clone examples explicitly select `hemloc` or `/opt/hemloc` to preserve their
+subsequent commands. The historical release tag still resolves to its original
+commit and therefore contains its original documentation.
+
+In each existing Git checkout, first verify that origin points to this project,
+then update only its URL (use the actual source checkout, not necessarily the
+installed venv directory):
+
+```bash
+cd SOURCE_CHECKOUT
+git remote -v
+git remote set-url origin https://github.com/biba-odesa/hemlock.git
+git fetch origin main
+```
+
+This requires no package reinstall, configuration/DB migration or service restart.
+GitHub redirects the former repository URL; do not create another repository under
+the former name, which would replace that redirect. Existing node IDs, service
+names, route-owner identities and TLS/replication settings are unchanged.

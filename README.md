@@ -27,7 +27,7 @@ replace addresses, ASNs, protection and route attributes before deployment.
 ## Install from the release tag
 
 ```bash
-git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemloc.git
+git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemlock.git hemloc
 cd hemloc
 python3 -m venv .venv
 .venv/bin/python -m pip install --require-hashes -r requirements.lock

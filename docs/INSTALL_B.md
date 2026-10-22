@@ -2,7 +2,7 @@
 
 Инструкция для релиза **v0.1.0**, полный commit
 `2a79d8a005bee81c8adf6f11fb856e3d0eb5064a` из
-https://github.com/biba-odesa/hemloc. Это последовательность действий оператора,
+https://github.com/biba-odesa/hemlock. Это последовательность действий оператора,
 а не автоматический установщик. Нельзя запускать её целиком одним скриптом.
 A — действующий master; B — новый slave. Рабочую БД A на B не копируют.
 Тег не перемещается. Код из более новой main для этой установки не нужен.
@@ -151,7 +151,7 @@ install -d -o root -g gobgp -m 0750 /etc/gobgp
 install -d -o hemloc -g hemloc -m 0700 /var/lib/hemloc /var/lib/hemloc/backups
 install -d -o root -g root -m 0700 /root/hemloc-transfer
 
-git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemloc.git /opt/hemloc
+git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemlock.git /opt/hemloc
 cd /opt/hemloc
 test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
 git describe --tags --exact-match

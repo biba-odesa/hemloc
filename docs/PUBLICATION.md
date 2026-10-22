@@ -1,6 +1,6 @@
 # Publication policy and release audit
 
-Public repository: https://github.com/biba-odesa/hemloc
+Public repository: https://github.com/biba-odesa/hemlock
 Release branch: main. First annotated release tag: v0.1.0.
 
 The initial public repository commit is preserved as the parent of the first

@@ -544,3 +544,26 @@ owner/protection/notification settings, restart only the application and verify
 fresh green In sync/zero lag plus current RIB/export observations. No new config
 blocks or enabled features are required. Current/previous versions remain wire
 compatible. Existing release tags are not moved.
+
+## GitHub repository URL rename
+
+Operator authorizes renaming the existing GitHub repository from hemloc to
+hemlock and updating public links. Repository ID, main, annotated v0.1.0 object
+and peeled release commit are checked before/after the in-place rename. A complete
+verified local Git bundle and metadata/ref snapshot are retained outside Git.
+The local origin points to https://github.com/biba-odesa/hemlock.git.
+
+Public README/deployment/slave-install/publication links use the new URL. Clone
+commands explicitly retain their destination directory, so later cd and installed
+paths remain correct. RENAMING.md documents existing-clone origin updates without
+runtime changes. The ignored local slave guide's repository URL is updated if
+present; operational values and the local document remain excluded from delivery.
+
+Verification: new/redirected remote refs match. A fresh bare clone of the
+immutable release tag through the new URL resolves to its original peeled SHA.
+All four changed clone commands have explicit unchanged destinations and pass
+shell syntax validation. Staged content and complete history are scanned before
+a normal main push. No application source, dependencies, active
+paths, configs, DBs, node IDs, services or BGP sessions are changed. No deployment
+or application restart is needed. The second node is not contacted; its operator
+can update origin in its existing Git checkout independently.
