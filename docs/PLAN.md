@@ -923,3 +923,33 @@ then operator fetches that fixed commit for the still-stopped fresh B installer.
 After manual INI/TLS/protection/peer review, init-db as slave and start services;
 never restore old slave DB or create an administrator on the slave. Update A
 separately before expecting protocol-3 snapshot/journal synchronization.
+
+## Operator-authorized master application update checkpoint
+
+After the fresh slave installation, the operator authorized updating the existing
+master application. Installed the published fixed source commit 72443a5 (0.4.1,
+protocol 3), preserving its existing installation paths/account/unit name rather
+than performing an unrequested filesystem migration. Only the application
+ExecStart was adapted to the canonical CLI through a narrow systemd drop-in;
+HTTPS bind capability remains in effect. Existing INI is byte-for-byte unchanged.
+
+Before application stop: validated peer TLS/token/node identity and protocol-3
+handshake, master role, no unfinished transition, SQLite integrity; prepared
+private configuration/unit/venv rollback files and a SQLite backup using the
+existing CLI after stopping the application. No plain copy of an open DB.
+Installed the fixed wheel and hash-locked dependencies, pip check and package/
+configuration/protocol checks passed, then started only the application.
+
+Post-update verification: unchanged non-audit replicated documents, protection,
+master generation and existing audit; successful CA-verified management HTTPS;
+zero application restart failures; unchanged GoBGP PID, complete observed RIB and
+peer states/establishment timestamps. Replication resumed automatically with
+matching history/cursor, zero lag and drained slave security outbox. No human
+login, test mutation, synthetic audit event or real notification test was created.
+Private paths, deployment identity, working data/counts and rollback records stay
+outside Git. The fresh slave remains announcements-disabled with peers disabled;
+no remote configuration/service/BGP change was performed by this update.
+
+Next: operator reviews fresh slave protection/readiness and separately authorizes
+its BGP participation. Do not remove either private rollback archive yet. The
+fresh-installer release tags and published source commit remain unchanged.
