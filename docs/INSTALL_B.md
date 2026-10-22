@@ -67,22 +67,27 @@ printf 'Selected commit: %s\n' "$COMMIT"
 
 ## 2. Проверенный GoBGP и установка без старта
 
-Нужен GoBGP **4.10.0+hemlock-ibgp-ttl1**, API v4.10.0 и приложенный TTL patch.
-Соберите дважды по [BUILD.md](BUILD.md) либо безопасно перенесите проверенный
-бинарник без конфигов/секретов. При переносе получите checksum независимым каналом.
-Нельзя устанавливать stock другую major-версию или класть готовый binary в Git.
-Сохраните provenance, Apache-2.0 и notices модулей.
+GoBGP **4.10.0+hemlock-ibgp-ttl1** собирается установщиком автоматически:
+фиксированные Go 1.25.14 linux-amd64 и GoBGP source скачиваются по HTTPS,
+SHA256 обоих архивов проверяется до распаковки, затем применяется TTL patch.
+Готовый бинарник с A переносить не требуется. Stock/latest не подставляется.
+Нужны Linux amd64, не менее 4 GiB свободно в /var/tmp и 1 GiB в /opt;
+рекомендуется 2 GiB RAM. Сборка использует две jobs, Go modules загружаются
+через proxy.golang.org с проверкой sum.golang.org. HTTP proxy задаётся явно
+через `--proxy`; системный Go не используется. Подробнее: [BUILD.md](BUILD.md).
 
 ```bash
-GOBGP_BINARY=/root/gobgpd-verified
-GOBGP_SHA='<INDEPENDENTLY_VERIFIED_SHA256>'
-printf '%s  %s\n' "$GOBGP_SHA" "$GOBGP_BINARY" | sha256sum -c -
-"$GOBGP_BINARY" --version
 bash deploy/install-debian13.sh \
   --role slave --version "$COMMIT" --expected-commit "$COMMIT" \
-  --node-id block-b --peer-node-id block-a --owner 64512,100,2 \
-  --gobgp-binary "$GOBGP_BINARY" --gobgp-sha256 "$GOBGP_SHA" --check
+  --node-id block-b --peer-node-id block-a --owner 64512,100,2 --check
 ```
+
+`--check` ничего не скачивает и не компилирует. Для самой установки повторите
+без `--check`. Отчёт сборки: `/usr/local/share/hemlock/gobgp-build.json`;
+лицензия GoBGP: `/usr/local/share/LICENSE.GoBGP`. Ошибка сборки останавливает
+установку до создания service users/configs. Временные build-файлы удаляются.
+Дополнительный вариант — явно передать оба `--gobgp-binary` и `--gobgp-sha256`
+для независимо проверенного готового бинарника; по умолчанию они не нужны.
 
 Node IDs и owner замените согласованными значениями; owner slave уникален и
 сохраняется при смене роли. Повторите без `--check` (при необходимости добавьте

@@ -40,7 +40,9 @@ Canonical paths and identities: `/opt/hemlock` (code/venv), `/etc/hemlock`,
 
 Install Git before cloning. Select an immutable published 0.4.0+ tag or full
 commit, verify it, then run the installer with the role, unique node/peer IDs,
-route owner, separately verified patched GoBGP binary and SHA256. The installer
+route owner. The installer downloads checksum-pinned Go 1.25.14 and GoBGP 4.10.0,
+applies the TTL patch and builds the daemon on Linux amd64 (4 GiB build space,
+2 GiB RAM recommended). A verified prebuilt binary plus SHA256 is optional. It
 refuses existing installations; it does not initialize data, generate secrets,
 create an administrator, enable/start units or enable announcements. Prepare
 TLS, peer parameters, protection and approved route attributes before startup.

@@ -8,10 +8,11 @@ usage() {
   cat <<'HELP'
 Usage: install-debian13.sh --role master|slave --version TAG|FULL_COMMIT \
   --node-id ID --peer-node-id ID --owner A,B,C \
-  --gobgp-binary FILE --gobgp-sha256 SHA256 [--expected-commit FULL_COMMIT] \
+  [--gobgp-binary FILE --gobgp-sha256 SHA256] [--expected-commit FULL_COMMIT] \
   [--proxy http://HOST:PORT] [--check]
 Install fixed canonical Hemlock sources on a clean Debian 13 host as root.
-Supply an independently verified GoBGP 4.10.0+hemlock-ibgp-ttl1 binary.
+By default download, verify and build GoBGP 4.10.0+hemlock-ibgp-ttl1 with Go 1.25.14.
+An independently verified prebuilt binary is optional. Linux amd64 only.
 --check performs preflight only, without apt, downloads or filesystem changes.
 Proxy credentials in arguments are forbidden. No configuration secrets are created.
 HELP
@@ -49,11 +50,14 @@ for PART in "${OWNER_PARTS[@]}"; do
     fail 'Owner component exceeds uint32'
   fi
 done
-[[ $CHECKSUM =~ ^[0-9a-fA-F]{64}$ && $BINARY == /* && -f $BINARY && ! -L $BINARY ]] || fail 'Supply a regular GoBGP binary and SHA256'
-printf '%s  %s\n' "$CHECKSUM" "$BINARY" | sha256sum --check --status || fail 'GoBGP checksum mismatch'
-[[ -x $BINARY ]] || fail 'Verified GoBGP input must already be executable'
-BINARY_VERSION=$("$BINARY" --version)
-[[ $BINARY_VERSION == *4.10.0+hemlock-ibgp-ttl1* ]] || fail 'Expected verified GoBGP 4.10.0+hemlock-ibgp-ttl1'
+[[ $(uname -m) == x86_64 ]] || fail 'Pinned GoBGP toolchain supports Linux amd64 only'
+if [[ -n $BINARY || -n $CHECKSUM ]]; then
+  [[ $CHECKSUM =~ ^[0-9a-fA-F]{64}$ && $BINARY == /* && -f $BINARY && ! -L $BINARY ]] || fail 'Supply both a regular GoBGP binary and SHA256'
+  printf '%s  %s\n' "$CHECKSUM" "$BINARY" | sha256sum --check --status || fail 'GoBGP checksum mismatch'
+  [[ -x $BINARY ]] || fail 'Verified GoBGP input must already be executable'
+  BINARY_VERSION=$("$BINARY" --version)
+  [[ $BINARY_VERSION == 'gobgpd version 4.10.0+hemlock-ibgp-ttl1' ]] || fail 'Expected verified GoBGP 4.10.0+hemlock-ibgp-ttl1'
+fi
 [[ -z $PROXY || $PROXY =~ ^https?://[A-Za-z0-9._-]+:[0-9]+/?$ ]] || fail 'Proxy must be http(s)://HOST:PORT without credentials'
 
 # Refuse both canonical and earlier installations instead of silently migrating.
@@ -69,8 +73,11 @@ if getent group | awk -F: '$1 ~ /^hemlo/ || $1 == "gobgp" {found=1} END {exit !f
   fail 'Existing service group detected; no groups were changed'
 fi
 [[ $(df -Pk /opt | awk 'END {print $4}') -ge 1048576 ]] || fail 'At least 1 GiB free in /opt is required'
+if [[ -z $BINARY ]]; then
+  [[ $(df -Pk /var/tmp | awk 'END {print $4}') -ge 4194304 ]] || fail 'GoBGP build needs at least 4 GiB free in /var/tmp'
+fi
 if [[ $CHECK == yes ]]; then
-  printf 'Preflight OK. Planned: apt dependencies, fixed checkout/venv, private directories, disabled units. No service start.\n'
+  printf 'Preflight OK. Planned: apt dependencies, fixed checkout/venv, pinned GoBGP build unless supplied, private directories, disabled units. No service start.\n'
   exit 0
 fi
 
@@ -80,8 +87,11 @@ if [[ -n $PROXY ]]; then
   export http_proxy="$PROXY" https_proxy="$PROXY" HTTP_PROXY="$PROXY" HTTPS_PROXY="$PROXY"
 fi
 export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y --no-install-recommends git python3.13-venv ca-certificates tzdata bgpq4 openssl patch curl systemd
+apt-get -o Acquire::Languages=none -o Acquire::Retries=2 \
+  -o Acquire::https::Timeout=30 -o Acquire::http::Timeout=30 \
+  -o APT::Update::Error-Mode=any update
+apt-get -o Acquire::Retries=2 -o Acquire::https::Timeout=30 \
+  -o Acquire::http::Timeout=30 install -y --no-install-recommends git python3.13-venv ca-certificates tzdata bgpq4 openssl patch curl systemd tar coreutils
 
 # Git is installed before its first invocation. Never resolve a moving branch.
 git clone --no-checkout https://github.com/biba-odesa/hemlock.git /opt/hemlock
@@ -103,11 +113,24 @@ project=tomllib.loads((root/'pyproject.toml').read_text())['project']
 assert project['name']=='hemlock' and tuple(map(int,project['version'].split('.'))) >= (0,4,0), 'Canonical release 0.4.0 or later required'
 assert 'User=hemlock\n' in (root/'deploy/hemlock.service').read_text()
 PY
+if [[ -z $BINARY ]]; then
+  [[ -f /opt/hemlock/deploy/build-gobgp.sh ]] || fail 'Selected release lacks the bundled GoBGP builder; select a newer fixed release or provide verified prebuilt input'
+fi
 python3.13 -m venv /opt/hemlock/.venv
 /opt/hemlock/.venv/bin/python -m pip install --require-hashes -r /opt/hemlock/requirements-build.lock
 /opt/hemlock/.venv/bin/python -m pip install --require-hashes -r /opt/hemlock/requirements.lock
 /opt/hemlock/.venv/bin/python -m pip install --no-deps --no-build-isolation /opt/hemlock
 /opt/hemlock/.venv/bin/python -m pip check
+
+BUILD_WORK=''
+trap 'if [[ -n $BUILD_WORK ]]; then rm -rf -- "$BUILD_WORK"; fi' EXIT
+if [[ -z $BINARY ]]; then
+  BUILD_WORK=$(mktemp -d /var/tmp/hemlock-install-build.XXXXXX)
+  BUILD_ARGS=(--output "$BUILD_WORK/result")
+  if [[ -n $PROXY ]]; then BUILD_ARGS+=(--proxy "$PROXY"); fi
+  bash /opt/hemlock/deploy/build-gobgp.sh "${BUILD_ARGS[@]}"
+  BINARY="$BUILD_WORK/result/gobgpd"
+fi
 
 useradd --system --user-group --home-dir /var/lib/hemlock --no-create-home --shell /usr/sbin/nologin hemlock
 useradd --system --user-group --no-create-home --shell /usr/sbin/nologin gobgp
@@ -128,6 +151,10 @@ chown root:hemlock /etc/hemlock/hemlock.ini
 chmod 0640 /etc/hemlock/hemlock.ini
 install -o root -g root -m 0755 "$BINARY" /usr/local/bin/gobgpd
 install -o root -g root -m 0644 /opt/hemlock/deploy/patches/LICENSE.GoBGP /usr/local/share/LICENSE.GoBGP
+if [[ -n $BUILD_WORK ]]; then
+  install -d -o root -g root -m 0755 /usr/local/share/hemlock
+  install -o root -g root -m 0644 "$BUILD_WORK/result/build-report.json" /usr/local/share/hemlock/gobgp-build.json
+fi
 install -o root -g gobgp -m 0640 /opt/hemlock/deploy/gobgpd.managed.example.toml /etc/gobgp/gobgpd.toml.example
 install -o root -g root -m 0644 /opt/hemlock/deploy/hemlock.service /etc/systemd/system/hemlock.service
 install -o root -g root -m 0644 /opt/hemlock/deploy/gobgp.service /etc/systemd/system/gobgp.service

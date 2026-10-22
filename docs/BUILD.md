@@ -39,6 +39,28 @@ metadata are packaged by setuptools. requirements.lock pins runtime dependencies
 requirements-test.lock additionally pins test tooling including its setuptools
 dependency. pip check should pass in a fresh dedicated installation.
 
+## Automatic fresh-install build
+
+The fresh Debian installer now calls [build-gobgp.sh](../deploy/build-gobgp.sh)
+automatically unless both prebuilt input flags are supplied. No system Go or
+prior GoBGP installation is required. It uses the same pinned source/toolchain,
+patch and build flags described below. Downloads verify SHA256 before extraction;
+module downloads use sum.golang.org, compilation uses GOPROXY=off. Limit: Linux
+amd64, two compile jobs, 4 GiB free build space, 2 GiB RAM recommended. Build
+failure is fatal; no stock fallback, service start, DB or secrets are created.
+The installer retains `/usr/local/share/hemlock/gobgp-build.json` and the upstream
+Apache-2.0 license, then removes temporary SDK/module/build caches.
+
+Standalone builder (requires curl, Git, tar, coreutils and Python 3.13):
+
+```bash
+bash deploy/build-gobgp.sh --output /ABS/NEW_OUTPUT_DIRECTORY
+```
+
+Use `--proxy http://HOST:PORT` explicitly if needed; environment proxies are
+ignored. This command builds once. The separate release procedure below builds
+twice and compares artifacts. The installer never downloads a moving latest v4.
+
 ## GoBGP with the explicit internal-peer TTL patch
 
 The gRPC API is GoBGP 4.10.0 only. The patch honors configured multihop TTL for

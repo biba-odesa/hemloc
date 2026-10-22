@@ -859,3 +859,67 @@ not changed. No host service operation or real notification handler was invoked.
 Next: operator review and separately authorized publication; then B → A update
 using a published fixed commit, verify automatic catch-up/outbox before retention.
 No push is authorized for this task; existing release tags remain untouched.
+
+## Fresh installer: automatic pinned GoBGP build
+
+Operator-approved follow-up: fresh Debian 13 installation no longer requires a
+manual GoBGP binary transfer. Default install downloads fixed upstream GoBGP
+4.10.0 and Go 1.25.14 Linux amd64 archives over HTTPS, checks both pinned SHA256s
+before extraction/execution, applies the existing TTL patch and builds the exact
+4.10.0+hemlock-ibgp-ttl1 daemon. No latest/branch resolution, system Go, alternate
+major API, unpatched fallback or existing-service migration. Optional prebuilt
+binary+independent checksum input remains paired and explicitly checked.
+
+New deploy/build-gobgp.sh bounds compile concurrency to two jobs, pins module
+proxy/checksum verification, clears inherited Go/proxy bypass settings, supports
+an explicit credential-free --proxy, builds offline after module download, checks
+version and preserves binary/source/SDK/patch digests in an installed build report.
+Temporary SDK/module/build caches are removed. Archive, patch, dependency or
+compile failure aborts before Hemlock/GoBGP service users/configs are created;
+partially installed source/venv may remain and must be inspected before retry.
+No DB/admin/TLS/secret is generated, no service is enabled or started, announcements
+remain disabled. Existing-install refusal and separate manual configuration/start
+remain deliberate. apt now omits unnecessary translation indexes and has explicit
+network timeouts/retries and fatal update errors. Linux amd64 only; preflight
+requires 4 GiB in /var/tmp for default builds plus 1 GiB in /opt; 2 GiB RAM advised.
+
+Verification:
+- Full suite: 188 discovered, 187 passed and one opt-in live test skipped;
+  var/installer-auto-full-tests.log. Installer contracts: default/prebuilt,
+  slave/master/proxy, no binary needed for preflight, existing install, checksums,
+  dependency/build failures and no premature users/configs/service control.
+- Seven synthetic-archive builder tests cover fixed inputs, direct/proxy,
+  checksum-before-source execution, download/patch/compile failures, no output
+  overwrite, offline compile and digest/license report. Shell syntax and ShellCheck
+  0.10.0 pass. Final combined script tests repeat after the final source edits.
+- Actual fresh Debian 13 root filesystem from the prior signed minimal bootstrap,
+  with private mount/PID namespace and no previous app/Go/GoBGP/users/configs:
+  real apt packages, Git-before-clone, venv/hash-locked pip and real HTTPS downloads,
+  checksum verification, TTL patch and Go compilation all passed. The selected
+  fixed source was a local test Git snapshot via rootfs-only URL rewrite, not an
+  unpublished GitHub ref. Explicit download proxy was used in the successful run.
+  Initial direct apt attempts stalled on index/package fetch and were stopped
+  only inside their test namespaces; no host package/service change occurred.
+- Installed daemon SHA256 matches the separately reproduced release binary:
+  9c990502689cfdd927f371382e64d877a3ef90f65130b76db64eee3bd619f154.
+  Installed 0.4.1 web/package import, protocol 3, pip check, slave role, root-owned
+  code, INI permissions/readability, disabled units, empty data directory and
+  absence of keys/token/admin/real-peer config passed; repeat install refused.
+  systemd-analyze --root verify passed for both units. Logs:
+  var/installer-auto-results-verified.log and var/installer-auto-rootfs.log.
+- This is NOT a booted VM with systemd PID1: actual operator config/TLS, initial
+  service start and reboot on B remain separate steps. Installer success does not
+  imply BGP/replication readiness; old A needs protocol-compatible update.
+- README, master/slave instructions and build docs now use default automatic
+  compilation, describe the optional binary path and report/license locations.
+  Source distribution verification checks inclusion of both scripts/patch/license
+  and exclusion of runtime/local deployment files. No binaries are added to Git.
+
+Production A/B, services, configs, DBs, routes and roles remain untouched. Old B
+backup is operator-managed and must not be removed. Unrelated pre-existing
+untracked file is left untouched and excluded. Operator authorized publication;
+next: finish staged privacy review, commit/push main without force or tag changes,
+then operator fetches that fixed commit for the still-stopped fresh B installer.
+After manual INI/TLS/protection/peer review, init-db as slave and start services;
+never restore old slave DB or create an administrator on the slave. Update A
+separately before expecting protocol-3 snapshot/journal synchronization.

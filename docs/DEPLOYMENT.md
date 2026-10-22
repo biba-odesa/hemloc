@@ -65,23 +65,26 @@ printf 'Selected commit: %s\n' "$COMMIT"
 используйте опубликованный **полный commit**, содержащий установщик. Старый
 v0.3.0 не содержит канонической поставки; существующие теги не перемещаются.
 
-До установщика подготовьте исполняемый GoBGP **4.10.0+hemlock-ibgp-ttl1**.
-Две независимые сборки из pinned source/Go SDK, checksum и лицензии подробно и
-копируемо приведены в [BUILD.md](BUILD.md). Альтернатива — защищённый перенос
-уже проверенного бинарника той же сборки, без конфигов/БД/ключей. На источнике
-получите `sha256sum` независимо от канала переноса; на новом сервере:
+Установщик сам скачивает GoBGP **4.10.0** и Go **1.25.14 linux-amd64**,
+проверяет фиксированные SHA256 архивов до распаковки, применяет TTL patch и
+собирает **4.10.0+hemlock-ibgp-ttl1**. Установленный системный Go не используется.
+Нужны Linux amd64, минимум 4 GiB свободного места в /var/tmp и 1 GiB в /opt;
+рекомендуется не менее 2 GiB RAM. Сборка ограничена двумя параллельными jobs.
+Сетевой доступ нужен также к proxy.golang.org и sum.golang.org. Версии не
+выбираются по latest; их обновляют после отдельного тестирования релиза.
 
-```bash
-GOBGP_BINARY=/root/gobgpd-verified
-GOBGP_SHA='<INDEPENDENTLY_VERIFIED_SHA256>'
-printf '%s  %s\n' "$GOBGP_SHA" "$GOBGP_BINARY" | sha256sum -c -
-"$GOBGP_BINARY" --version
-```
+GoBGP не запускается во время сборки, кроме безопасного `--version`.
+Ошибка скачивания/checksum/патча/компиляции останавливает установку, без
+fallback на stock binary. Отчёт с SHA256 исходника, SDK, patch и бинарника:
+`/usr/local/share/hemlock/gobgp-build.json`; лицензия Apache-2.0:
+`/usr/local/share/LICENSE.GoBGP`. Временные SDK/cache удаляются после сборки.
+Готовый бинарник не добавляется в Git. Независимые воспроизводимые сборки и
+правила сохранения notices описаны в [BUILD.md](BUILD.md).
 
-Не заменяйте stock GoBGP другой major-версией. Не добавляйте бинарник в Git.
-При распространении сохраняются Apache-2.0 GoBGP и notices зависимостей;
-приложение — MIT. Установщик проверяет checksum и точный version marker, но
-доверие к входному checksum/происхождению сборки обеспечивает оператор.
+Дополнительный вариант: передать заранее проверенный бинарник через
+`--gobgp-binary /ABS/PATH --gobgp-sha256 VERIFIED_SHA256`. Оба параметра
+обязательны вместе; происхождение checksum оператор проверяет отдельно.
+Для обычной установки эти параметры **не нужны**.
 
 ## 3. Установщик (без запуска)
 
@@ -92,13 +95,12 @@ printf '%s  %s\n' "$GOBGP_SHA" "$GOBGP_BINARY" | sha256sum -c -
 ```bash
 bash deploy/install-debian13.sh \
   --role master --version "$COMMIT" --expected-commit "$COMMIT" \
-  --node-id block-a --peer-node-id block-b --owner 64512,100,1 \
-  --gobgp-binary "$GOBGP_BINARY" --gobgp-sha256 "$GOBGP_SHA" --check
+  --node-id block-a --peer-node-id block-b --owner 64512,100,1 --check
 ```
 
 После успешного preflight повторите без `--check`. Для proxy добавьте
 `--proxy http://PROXY_HOST:PORT`. Установщик ставит Git/Python venv/bgpq4 и
-зависимости по hash-lock, фиксированный исходник, проверенный binary и units;
+зависимости по hash-lock, фиксированный исходник, собирает TTL-patched GoBGP и ставит units;
 не создаёт секреты/БД/администратора, не включает и не запускает сервисы.
 Код/venv root-owned и недоступны сервисному пользователю на запись.
 При ошибке останется частичная установка: не стирайте её вслепую для повторения.

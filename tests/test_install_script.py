@@ -20,6 +20,11 @@ if name=='git':
     if args[0]=='clone':shutil.copytree(os.environ['INSTALL_SOURCE'],args[-1])
     if 'rev-parse' in args:print('a'*40)
 elif name=='getent':sys.exit(2)
+elif name=='builder.py':
+    if os.environ.get('INSTALL_FAIL')=='build':sys.exit(5)
+    target=pathlib.Path(args[args.index('--output')+1]);target.mkdir()
+    shutil.copy2(os.environ['INSTALL_BINARY'],target/'gobgpd')
+    (target/'build-report.json').write_text('{"fixture":true}')
 elif name=='install':
     filtered=[];i=0
     while i<len(args):
@@ -54,6 +59,8 @@ class InstallerTests(unittest.TestCase):
         for name in ('git','apt-get','useradd','getent','chown','systemctl','install','python3.13'):
             (bin_dir/name).symlink_to(handler)
         self.binary=self.root/'verified-gobgpd';self.binary.write_text('#!/bin/sh\necho gobgpd version 4.10.0+hemlock-ibgp-ttl1\n');self.binary.chmod(0o755)
+        builder=self.root/'builder.py';builder.write_text(HANDLER)
+        (self.source/'deploy/build-gobgp.sh').write_text('#!/bin/bash\nexec "$INSTALL_PYTHON" "$INSTALL_BUILD_HANDLER" "$@"\n')
         self.sha=hashlib.sha256(self.binary.read_bytes()).hexdigest()
         body=Path('deploy/install-debian13.sh').read_text()
         for prefix in ('/opt/','/etc/','/var/lib/','/usr/local/','/usr/lib/systemd/'):
@@ -61,10 +68,10 @@ class InstallerTests(unittest.TestCase):
         body=body.replace('df -Pk /opt','df -Pk '+str(self.fake/'opt'))
         body=body.replace('[[ $EUID == 0 ]]','[[ 0 == 0 ]]')
         self.script=self.root/'install.sh';self.script.write_text(body)
-        self.env=dict(os.environ,PATH=str(bin_dir)+':'+os.environ['PATH'],INSTALL_LOG=str(self.log),INSTALL_SOURCE=str(self.source),INSTALL_PYTHON=sys.executable)
+        self.env=dict(os.environ,PATH=str(bin_dir)+':'+os.environ['PATH'],INSTALL_LOG=str(self.log),INSTALL_SOURCE=str(self.source),INSTALL_PYTHON=sys.executable,INSTALL_BUILD_HANDLER=str(builder),INSTALL_BINARY=str(self.binary))
 
-    def run_installer(self,role='master',extra=(),failure=None):
-        args=['--role',role,'--version','a'*40,'--expected-commit','a'*40,'--node-id','fixture-a','--peer-node-id','fixture-b','--owner','64512,100,1','--gobgp-binary',str(self.binary),'--gobgp-sha256',self.sha,*extra]
+    def run_installer(self,role='master',extra=(),failure=None,prebuilt=True):
+        args=['--role',role,'--version','a'*40,'--expected-commit','a'*40,'--node-id','fixture-a','--peer-node-id','fixture-b','--owner','64512,100,1',*(['--gobgp-binary',str(self.binary),'--gobgp-sha256',self.sha] if prebuilt else []),*extra]
         env=self.env|({'INSTALL_FAIL':failure} if failure else {})
         return subprocess.run(['bash',str(self.script),*args],capture_output=True,text=True,env=env)
 
@@ -111,3 +118,21 @@ class InstallerTests(unittest.TestCase):
         self.assertIn('Installation failed',result.stderr)
         self.assertFalse(any(name in ('useradd','systemctl') for name,args,proxy in self.commands()))
         self.assertFalse((self.fake/'etc/hemlock').exists())
+
+    def test_default_build_and_failure_before_users(self):
+        result=self.run_installer(prebuilt=False)
+        self.assertEqual(result.returncode,0,result.stderr)
+        builds=[args for name,args,proxy in self.commands() if name=='builder.py']
+        self.assertEqual(len(builds),1)
+        self.assertTrue((self.fake/'usr/local/share/hemlock/gobgp-build.json').exists())
+
+    def test_default_build_failure_starts_nothing(self):
+        result=self.run_installer(prebuilt=False,failure='build')
+        self.assertNotEqual(result.returncode,0)
+        self.assertFalse(any(name in ('useradd','systemctl') for name,args,proxy in self.commands()))
+        self.assertFalse((self.fake/'etc/hemlock').exists())
+
+    def test_default_preflight_needs_no_binary_or_download(self):
+        result=self.run_installer(prebuilt=False,extra=('--check',))
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertFalse(any(name in ('apt-get','builder.py','git') for name,args,proxy in self.commands()))
