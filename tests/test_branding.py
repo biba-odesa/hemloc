@@ -23,6 +23,7 @@ class BrandingTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             cfg=Config(tls=False,database=tmp+'/a.sqlite',peer_url='https://peer.invalid')
             store=Store(cfg);service=Service(store);now=time.time();info=store.info()
+            store.set_local('peer_compatibility',{'ok':True,'at':now,'local_protocol_version':3,'peer_protocol_version':3})
             store.set_local('sync',{'ok':True,'at':now,'last_success':now})
             store.set_local('peer',{'at':now,'status':{'history':info['history'],'sequence':info['sequence']}})
             self.assertTrue(View(service,now).dashboard()['peer']['healthy'])

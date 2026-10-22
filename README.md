@@ -1,5 +1,7 @@
 # Hemlock
 
+Compatibility in 0.4.1: explicit protocol **3**; update **B → A**, without reinstalling the slave for ordinary upgrades. [Compatibility checks and upgrade order](docs/REPLICATION_PROTOCOL.md).
+
 Hemlock manages IP-address and network blocking through GoBGP on Debian 13.
 It runs as one unprivileged Python application: FastAPI, embedded HTTPS Uvicorn,
 SQLite, local web assets, background tasks and a maintenance CLI. No reverse

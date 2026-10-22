@@ -169,11 +169,12 @@ class RuntimeTests(unittest.TestCase):
         master = self.store
         class Transport:
             broken = False
+            def handshake(inner):return {'replication_protocol_version':3}
             def get(inner, path, query=None):
                 if inner.broken:
                     raise PeerUnavailable('disconnect')
                 if path.endswith('/status'):
-                    return master.info()
+                    return master.info() | {'replication_protocol_version':3}
                 if path.endswith('/snapshot'):
                     return master.snapshot()
                 return master.events(query['history'], query['cursor'])
@@ -196,8 +197,9 @@ class RuntimeTests(unittest.TestCase):
     def test_two_masters_report_conflict(self):
         other = Store(replace(self.b, role='master'))
         class Transport:
+            def handshake(inner):return {'replication_protocol_version':3}
             def get(inner, path, query=None):
-                return other.info()
+                return other.info() | {'replication_protocol_version':3}
         with self.assertRaises(Conflict):
             Replicator(self.store, Transport()).step()
         self.assertFalse(self.store.local('sync')['ok'])

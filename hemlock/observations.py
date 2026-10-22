@@ -3,7 +3,7 @@ from copy import deepcopy
 from threading import RLock
 
 
-KEYS = frozenset(('rib', 'bgp', 'peer', 'sync', 'worker:retention', 'worker:asn',
+KEYS = frozenset(('peer_compatibility','rib', 'bgp', 'peer', 'sync', 'worker:retention', 'worker:asn',
                   'worker:protection', 'worker:bgp', 'worker:observation', 'worker:replication'))
 
 

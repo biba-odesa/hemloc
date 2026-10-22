@@ -1,5 +1,7 @@
 # Обновление, backup, rollback и смена ролей
 
+Совместимость 0.4.1: явный протокол **3**, обновление **B → A**, без переустановки slave для обычного обновления. [Проверка совместимости и порядок обновления](REPLICATION_PROTOCOL.md).
+
 Для канонических установок 0.4.0+: `/opt/hemlock`, `/etc/hemlock`,
 `/var/lib/hemlock`, `hemlock.service`, пользователь/CLI `hemlock`.
 Прежние установки сначала проходят [MIGRATION_LEGACY.md](MIGRATION_LEGACY.md).

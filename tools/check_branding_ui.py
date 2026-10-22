@@ -38,15 +38,25 @@ def main():
                 initial=page.evaluate("fetch('/api/dashboard').then(r=>r.json())")
                 for theme in ('dark','light'):
                     if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme').click()
-                    for status in ('In sync','Catching up','Unavailable','Stale / unavailable','Not configured','Conflict: two masters'):
+                    for status in ('In sync','Catching up','Unavailable','Stale / unavailable','Not configured','Conflict: two masters','Protocol version mismatch','Peer upgrade required','Authentication failed','Handshake required'):
                         data={**initial,'peer':{**initial['peer'],'status':status,'healthy':status=='In sync','lag':0 if status=='In sync' else None}}
+                        if status in ('Protocol version mismatch','Peer upgrade required'):
+                            data['peer']['compatibility']={'code':'protocol_mismatch' if status=='Protocol version mismatch' else 'peer_upgrade_required',
+                                'local_protocol_version':3,'peer_protocol_version':4 if status=='Protocol version mismatch' else None,
+                                'local_application_version':'0.4.1','peer_application_version':'9.8.7' if status=='Protocol version mismatch' else None}
                         page.route('**/api/dashboard',lambda route,request,data=data:route.fulfill(json=data))
                         page.evaluate('metrics()');expect(page.locator('#peer-state')).to_have_text(status)
                         expect(page.locator('#peer-state')).to_have_class('sync-healthy' if status=='In sync' else 'sync-unhealthy')
+                        if status=='Protocol version mismatch':
+                            expect(page.locator('#peer-detail')).to_contain_text('Protocol local/peer: 3 / 4')
+                            expect(page.locator('#peer-detail')).to_contain_text('App local/peer: 0.4.1 / 9.8.7')
+                        if status=='Peer upgrade required':
+                            expect(page.locator('#peer-detail')).to_contain_text('Not reported')
+                            expect(page.locator('#peer-detail')).to_contain_text('upgrade the peer')
                         color=page.locator('#peer-state').evaluate('el=>getComputedStyle(el).color')
                         channels=list(map(int,color.removeprefix('rgb(').removesuffix(')').split(',')))
                         assert (channels[1]>channels[0]) if status=='In sync' else (channels[0]>channels[1]),color
-                        if status in ('In sync','Unavailable'):page.screenshot(path=str(output/f'{theme}-{status.replace(" ","-")}.png'),full_page=True)
+                        if status in ('In sync','Unavailable','Protocol version mismatch','Peer upgrade required'):page.screenshot(path=str(output/f'{theme}-{status.replace(" ","-")}.png'),full_page=True)
                         page.unroute('**/api/dashboard')
                 assert not errors,errors
                 browser.close()

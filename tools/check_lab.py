@@ -37,7 +37,14 @@ class Client:
         self.csrf = ''
 
     def call(self, path, method='GET', body=None, headers=None):
-        request = Request(self.base + path, method=method, headers=headers or {})
+        headers=dict(headers or {})
+        if path.startswith('/replication/') and path!='/replication/handshake':
+            from hemlock.protocol import VERSION_HEADER,EXCHANGE_HEADER,REPLICATION_PROTOCOL_VERSION
+            headers[VERSION_HEADER]=str(REPLICATION_PROTOCOL_VERSION)
+            proof=self.call('/replication/handshake',headers=headers)
+            assert proof.get('compatible') is True
+            headers[EXCHANGE_HEADER]=proof['exchange_token']
+        request = Request(self.base + path, method=method, headers=headers)
         if method != 'GET':
             request.add_header('Content-Type', 'application/json')
             request.add_header('X-CSRF-Token', self.csrf)

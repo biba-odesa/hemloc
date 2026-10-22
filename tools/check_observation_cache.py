@@ -38,9 +38,10 @@ def run(package, root, cycles):
         def add(self,*args):raise AssertionError('Unexpected route addition')
         def delete(self,*args):raise AssertionError('Unexpected route deletion')
     class Transport:
+        def handshake(self):return {"replication_protocol_version":3}
         def get(self,path,query=None):
             if path=='/replication/status':
-                return {'node_id':'b','role':'slave','history':store.info()['history'],'sequence':store.info()['sequence']}
+                return {'replication_protocol_version':3,'node_id':'b','role':'slave','history':store.info()['history'],'sequence':store.info()['sequence']}
             if path=='/replication/local-audit':
                 return {'node_id':'b','history':'00000000-0000-4000-8000-000000000001','events':[]}
             raise AssertionError(path)

@@ -17,6 +17,7 @@ from hemlock.config import Config
 from hemlock.domain import Actor
 from hemlock.replication import PeerTransport, PeerUnavailable, Replicator
 from hemlock.service import Service
+from hemlock.protocol import Gate,VERSION_HEADER,EXCHANGE_HEADER
 from hemlock.store import Store,encode
 
 
@@ -42,6 +43,7 @@ class HTTPSReplicationTests(unittest.TestCase):
             service=Service(master)
             service.add_manual(admin,'198.51.100.0/24')
             state={'truncate':True,'race':False}
+            gate=Gate(master)
             class Handler(BaseHTTPRequestHandler):
                 def log_message(self,*args):
                     pass
@@ -50,8 +52,10 @@ class HTTPSReplicationTests(unittest.TestCase):
                         self.send_error(403)
                         return
                     url=urlsplit(self.path)
-                    if url.path.endswith('/status'):
-                        payload=master.info()
+                    if url.path.endswith('/handshake'):
+                        payload=gate.handshake(self.headers)
+                    elif url.path.endswith('/status'):
+                        payload=master.info() | gate.identity()
                     elif url.path.endswith('/snapshot'):
                         payload=master.snapshot()
                         if state['race']:
@@ -65,6 +69,8 @@ class HTTPSReplicationTests(unittest.TestCase):
                     if state['truncate'] and url.path.endswith('/snapshot'):
                         body=body[:len(body)//2]
                     self.send_response(200)
+                    if not url.path.endswith('/handshake'):
+                        for key,value in gate.require(self.headers).items():self.send_header(key,value)
                     self.send_header('Content-Type','application/json')
                     self.send_header('Content-Length',str(declared_length))
                     self.end_headers()

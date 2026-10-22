@@ -9,6 +9,7 @@ import uuid
 from zoneinfo import ZoneInfo
 
 from .domain import Conflict, Invalid
+from .protocol import confirmed
 from .history import CATEGORY, CATEGORIES, VISIBLE
 from .store import Store, digest, encode, redact
 
@@ -90,7 +91,7 @@ def peer_ready(store, db, now):
     peer = store.local('peer', {})
     status = peer.get('status', {})
     ack = store.local('peer_ack', {})
-    if (CAPABILITY not in status.get('capabilities', []) or status.get('role') != 'slave'
+    if (not confirmed(store,now) or CAPABILITY not in status.get('capabilities', []) or status.get('role') != 'slave'
             or now - peer.get('at', 0) > 60 or ack.get('history') != store.meta(db, 'history')
             or ack.get('sequence') != int(store.meta(db, 'sequence', '0'))
             or status.get('security_history') != store.meta(db, 'peer_security_history')
@@ -117,6 +118,7 @@ def validate_plan(store, plan, now=None):
 
 def execute(store, plan, now=None):
     """Apply only preselected IDs; batches and progress are crash-resumable and atomic."""
+    live_clock=now is None
     now = time.time() if now is None else now
     payload, expected = validate_plan(store, plan, now)
     with store.connect() as db:
@@ -132,13 +134,13 @@ def execute(store, plan, now=None):
                 if store.meta(db, 'history') != payload['history']:
                     raise Conflict('Retention plan belongs to a different history')
                 # Compatibility remains mandatory for every batch. The peer may lag
-                # this cleanup's own operations, but must have negotiated v2 first.
+                # this cleanup's own operations, but needs a fresh compatible handshake.
                 if offset == 0:
-                    peer_ready(store, db, now)
+                    peer_ready(store, db, time.time() if live_clock else now)
                 elif store.config.peer_url:
                     observed = store.local('peer', {})
                     peer = observed.get('status', {})
-                    if (CAPABILITY not in peer.get('capabilities', []) or peer.get('role') != 'slave'
+                    if (not confirmed(store,time.time() if live_clock else now) or CAPABILITY not in peer.get('capabilities', []) or peer.get('role') != 'slave'
                             or now - observed.get('at', 0) > 60):
                         raise Conflict('Peer compatibility changed')
                 kept = protected_logins(db)

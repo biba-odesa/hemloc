@@ -1,5 +1,7 @@
 # History, audit retention и внешние уведомления
 
+Совместимость 0.4.1: явный протокол **3**, обновление **B → A**, без переустановки slave для обычного обновления. [Проверка совместимости и порядок обновления](REPLICATION_PROTOCOL.md).
+
 Current 0.4.0 note: the stored audit-prune-v2/schema-2 format is unchanged, but
 HTTP peer identity naming changed. Both endpoints must be upgraded using
 MIGRATION_LEGACY.md before replication or retention is enabled; historical
@@ -86,13 +88,13 @@ batch_size = 200
 
 ## Репликация и совместимость
 
-Новая capability — `audit-prune-v2`. Обычные документы и snapshot schema 1
-совместимы с v0.1.0 **до первого prune**, пока новые notification failure/security
-contexts не передаются старому peer. Поэтому и notifications включать только
-после обновления обоих узлов. Протокол не меняет правила, credential versions,
-сессии, protection, desired state или GoBGP.
-
-Cleanup при настроенном peer требует свежего статуса (не старше 60 секунд),
+Capability maintenance-операций — `audit-prune-v2`; это не номер wire-протокола.
+С 0.4.1 весь обмен требует явного протокола 3 и успешного handshake, включая
+snapshot до первого prune. Старый релиз без handshake несовместим; fallback
+на старый формат отсутствует. Notifications и retention включайте только после
+обновления и проверки обоих узлов. Правила, credential versions, сессии,
+protection, desired state и GoBGP не очищаются.
+Cleanup при настроенном peer требует свежего handshake (до 30 секунд), статуса (не старше 60 секунд),
 capability, slave-роли peer, подтверждения текущего history/sequence и полностью
 принятого известного security outbox. При недоступном/отставшем/старом peer
 очистка откладывается, не угадывает совместимость. В односерверной конфигурации

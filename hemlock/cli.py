@@ -9,6 +9,7 @@ import sys
 from .auth import password_hash, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH
 from .config import load
 from .domain import Actor, Invalid
+from .protocol import ProtocolFailure
 from .service import Service
 from .store import Store, encode
 from .workers import process_lock
@@ -166,7 +167,7 @@ def main(argv=None):
         if store is not None and args.command == 'audit' and args.operation == 'prune' and args.execute:
             from .audit import failure_result
             store.security_event('root:cli', 'audit.prune', 'maintenance', failure_result(exc))
-        message = str(exc) if isinstance(exc, (Invalid, PermissionError)) else 'Operation failed; check configuration and local service health'
+        message = str(exc) if isinstance(exc, (Invalid, PermissionError, ProtocolFailure)) else 'Operation failed; check configuration and local service health'
         if isinstance(exc, ImportError):
             message = 'Project dependencies are missing; install them in the virtual environment'
         print(f'Hemlock: {message}', file=sys.stderr)

@@ -791,3 +791,71 @@ reviewed all changed public instructions for old-slave DB/cache transfer and
 legacy path ambiguity, checked internal documentation links and Git diff. No
 mutation tests needed for text-only changes. Next: publish the clarified docs;
 operator review/provisioning/migration remain separate authorized actions.
+
+## Explicit replication compatibility — 0.4.1 / protocol 3
+
+Implemented a single independent replication_protocol_version=3, separate from
+application 0.4.1, SQLite schema and audit-prune-v2 capability. Canonical node
+identity header remains stable. Added a small TLS/token/node-authenticated
+handshake and bounded process-local, node/version-bound 30-second exchange proofs.
+Every status/snapshot/journal/security-outbox endpoint checks the negotiated
+version/proof; client validates response proofs before remote state/ack commits.
+No missing-version/old-format fallback. Data requests with obsolete query format
+selectors are rejected. Mismatch/missing handshake cannot change roles, reset a
+DB, apply remote cursors/acknowledgements or prune. Local data, protection,
+security outbox, notifications and BGP remain independent of compatibility.
+
+Polling retries handshake and automatically resumes journal or normal snapshot
+recovery plus deduplicated outbox. Retention requires fresh confirmed compatibility
+for a configured peer, including each subsequent deletion batch. Dashboard has
+red Protocol version mismatch / Peer upgrade required with protocol/application
+versions, preserving actual last-success time; auth and network errors remain
+distinct. Same protocol with different app versions works. No new INI knob.
+
+Updated public compatibility/install/lifecycle/retention/naming documentation.
+Ordinary updates: slave B then master A, backup first, restart only Hemlock;
+no slave reinstall/init-db and no GoBGP restart. Prior optional fresh-B workflow
+remains an operator deployment decision, not a protocol requirement. If retention
+is enabled on a legacy release, pause it before the first upgrade because legacy
+code cannot retroactively enforce the new handshake. Resume only after both peers
+are compatible, caught up and outbox drained. No production update performed.
+
+Verification (isolated data/processes only):
+- Final unittest run: 178 discovered, 177 passed, one opt-in integration test
+  skipped; var/protocol-complete-suite.log. Six focused protocol tests include
+  direct endpoint bypass attempts, absent/malformed/expired handshake proof,
+  missing response proof, old peer without handshake/version, auth distinction,
+  unchanged rules/users/cursors/acks/protection/transition state during mismatch,
+  outbox accumulation/deduplication, expired-journal snapshot and blocked prune.
+- Real CA-verified two-node HTTPS timer polling with two own peer-free GoBGP
+  daemons passed B-first mismatch/A-upgrade resume, same protocol/different app
+  versions, unchanged real IPv4/IPv6 RIB and daemon PIDs during pause, backlog
+  delivery exactly once and Dashboard recovery; var/protocol-real-periodic.log.
+  Protocol 4 is injected only in the isolated test to simulate a future peer;
+  shipped application supports only protocol 3.
+- Full two-process HTTPS/background lab passed CA/SAN/token failures, snapshot/
+  journal, restart/outage retained data, slave read-only/protection divergence,
+  daemon recovery, promotion and old-master replacement; no daemon restarts on
+  role transitions; var/protocol-two-node-final.log. First preparation attempts
+  stopped on missing noninteractive lab password / reused modified test config;
+  fresh isolated fixture with in-memory generated password passed.
+- Real HTTPS audit workflow passed prune/replay/snapshot/outage/restart, admin/
+  guest API restrictions, pagination/search/details, both themes and one Unicode
+  batch notification with no notification on replication;
+  var/protocol-audit-workflow-checked.log. Updated obsolete test expectations for
+  removed legacy snapshot format; explicit invalid-request fixture is isolated.
+- Chromium Dashboard checks passed both themes, all unhealthy labels red and
+  only In sync green, local/peer version text and old-peer explanation;
+  var/protocol-dashboard-browser.log. Reviewed light-theme mismatch screenshot.
+- Wheel 0.4.1 built; isolated wheel install reports application 0.4.1/protocol 3;
+  development venv pip check passes. No dependency or GoBGP API changes.
+- Git candidate artifact and changed-file sensitive-pattern checks passed;
+  staged artifact scan passed for 33 files; full reachable history scan passed
+  for 21 commits / 419 distinct blob-path pairs (no key/hash/artifact findings). Runtime
+  logs/screenshots/fixture keys/DBs remain ignored under var, never staged.
+
+Production A/B, their configs, DBs, services, roles, GoBGP and BGP sessions were
+not changed. No host service operation or real notification handler was invoked.
+Next: operator review and separately authorized publication; then B → A update
+using a published fixed commit, verify automatic catch-up/outbox before retention.
+No push is authorized for this task; existing release tags remain untouched.

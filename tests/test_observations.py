@@ -25,6 +25,12 @@ ADMIN = Actor('fixture', 'admin')
 
 
 class Transport:
+    protocol_version=3
+    application_version="fixture"
+
+    def handshake(self):
+        return self.peer.info() | {"replication_protocol_version":3,"application_version":"fixture"}
+
     def __init__(self, peer):
         self.peer = peer
 
@@ -34,7 +40,7 @@ class Transport:
             with self.peer.connect() as db:
                 security_history = self.peer.meta(db, 'security_history')
                 security_sequence = db.execute('SELECT COALESCE(MAX(seq),0) FROM security_audit').fetchone()[0]
-            return self.peer.info() | {'capabilities':[CAPABILITY], 'security_history':security_history,
+            return self.peer.info() | {'replication_protocol_version':3,'capabilities':[CAPABILITY], 'security_history':security_history,
                                        'security_sequence':security_sequence}
         if path == '/replication/local-audit':
             return self.peer.local_security_events(query.get('after', 0), history=query.get('history', ''))

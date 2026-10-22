@@ -96,9 +96,10 @@ class AuditTests(unittest.TestCase):
         slave = self.slave
         slave.security_event('anonymous','auth.login','session','denied')
         class Transport:
+            def handshake(inner):return {'replication_protocol_version':3}
             def get(inner,path,query=None):
                 if path.endswith('/status'):
-                    return slave.info()
+                    return slave.info() | {'replication_protocol_version':3}
                 return slave.local_security_events(after=query['after'],history=query['history'])
         Replicator(self.master,Transport()).step()
         self.assertEqual(len(self.master.list('audit')),1)

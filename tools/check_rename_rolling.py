@@ -58,13 +58,14 @@ def main():
                 thread=threading.Thread(target=server.run);thread.start();servers.append(server);threads.append(thread);wait_for(lambda:server.started)
             ar=Replicator(a,PeerTransport(cfg));br=old['replication'].Replicator(b,old['replication'].PeerTransport(bcfg))
             from hemlock.replication import PeerUnavailable
+            from hemlock.protocol import ProtocolFailure
             try:ar.step()
-            except PeerUnavailable:pass
+            except (PeerUnavailable,ProtocolFailure):pass
             assert a.local('sync',{}).get('ok') is False
             assert a.info()['role']=='master' and b.info()['role']=='slave'
             assert a.info()['history']==b.info()['history']
             assert a.list('rule')==b.list('rule')
-            print('PASS: mixed canonical/previous peer headers are rejected without changing role, generation or rules. Coordinate both-node upgrade before replication resumes.')
+            print('PASS: mixed canonical/previous handshake/protocol are rejected without changing role, generation or rules. Coordinate both-node upgrade before replication resumes.')
         finally:
             for server in servers:server.should_exit=True
             for thread in threads:thread.join(15);assert not thread.is_alive()

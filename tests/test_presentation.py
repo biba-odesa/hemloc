@@ -89,6 +89,7 @@ class PresentationTests(unittest.TestCase):
         service=Service(Store(replace(self.cfg,peer_url='https://peer.invalid'),activate=False,observations=self.store.observations))
         info=self.store.info()
         self.store.set_local('peer',{'at':self.now,'status':{'history':info['history'],'sequence':info['sequence']-2}})
+        self.store.set_local('peer_compatibility',{'ok':True,'at':self.now,'local_protocol_version':3,'peer_protocol_version':3})
         self.store.set_local('sync',{'ok':True,'at':self.now,'last_success':self.now})
         self.assertEqual(View(service,self.now).dashboard()['peer']['lag'],2)
         self.store.set_local('worker:replication',{'at':self.now+1,'error':'Background operation failed'})

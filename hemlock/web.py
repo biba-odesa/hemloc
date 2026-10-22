@@ -64,7 +64,8 @@ class Password(Body):
     new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
 
-def create_app(config, *, adapter=None, background=True, observations=None):
+def create_app(config, *, adapter=None, background=True, observations=None,
+               replication_protocol_version=None):
     @asynccontextmanager
     async def lifespan(app):
         with process_lock(config.database):
@@ -85,7 +86,12 @@ def create_app(config, *, adapter=None, background=True, observations=None):
             store.on_commit = notifications.committed
             service = Service(store)
             auth = Auth(store)
-            peer = PeerTransport(config)
+            from .protocol import Gate, REPLICATION_PROTOCOL_VERSION
+            from .installed import application_identity
+            version=REPLICATION_PROTOCOL_VERSION if replication_protocol_version is None else replication_protocol_version
+            store.replication_protocol_version=version
+            app.state.replication_gate=Gate(store,version,application_identity()['version'])
+            peer = PeerTransport(config,protocol_version=version)
             asn_worker = ASNWorker(service)
             app.state.store, app.state.service, app.state.auth = store, service, auth
             app.state.peer, app.state.asn_worker = peer, asn_worker
@@ -189,7 +195,16 @@ def create_app(config, *, adapter=None, background=True, observations=None):
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
         response.headers['Cache-Control'] = 'no-store'
+        if getattr(request.state,'replication_headers',None):
+            response.headers.update(request.state.replication_headers)
         return response
+
+    from .protocol import ProtocolFailure
+
+    @app.exception_handler(ProtocolFailure)
+    async def protocol_failure(request,exc):
+        return JSONResponse({'error':str(exc),'code':exc.code,**exc.details},
+                            status_code={'peer_upgrade_required':426,'protocol_mismatch':412,'handshake_required':428}[exc.code])
 
     @app.exception_handler(Forbidden)
     async def forbidden(request, exc):
@@ -228,6 +243,12 @@ def create_app(config, *, adapter=None, background=True, observations=None):
     def peer_auth(request: Request):
         if not request.app.state.peer.authorized(request.headers.get('authorization'), request.headers.get('x-hemlock-node')):
             raise Forbidden('Peer authentication required')
+
+    def exchange_auth(request: Request):
+        peer_auth(request)
+        request.state.replication_headers=app.state.replication_gate.require(request.headers)
+        if 'protocol' in request.query_params:
+            raise Invalid('Obsolete format selector; only the negotiated replication protocol is accepted')
 
     def page(items, q, page, size):
         if page < 1 or not 1 <= size <= 100:
@@ -501,10 +522,14 @@ def create_app(config, *, adapter=None, background=True, observations=None):
         result = app.state.service.save_user(actor, login, role=body.role, enabled=body.enabled, password_hash=hashed)
         return {'status': 'saved', 'user': redact(result)}
 
-    @app.get('/replication/status', dependencies=[Depends(peer_auth)])
+    @app.get('/replication/handshake', dependencies=[Depends(peer_auth)])
+    def handshake(request: Request):
+        return app.state.replication_gate.handshake(request.headers)
+
+    @app.get('/replication/status', dependencies=[Depends(exchange_auth)])
     def replication_status():
         from .transition import RoleTransition
-        result = app.state.store.info()
+        result = app.state.store.info() | app.state.replication_gate.identity()
         result['role_transition'] = RoleTransition(config).status()
         result['bgp'] = app.state.store.local('bgp')
         result['now'] = time.time()
@@ -515,24 +540,17 @@ def create_app(config, *, adapter=None, background=True, observations=None):
             result['security_ack'] = {'history':app.state.store.meta(db, 'peer_security_history'), 'cursor':int(app.state.store.meta(db, 'peer_security_cursor', '0'))}
         return result
 
-    def require_protocol(protocol):
-        with app.state.store.connect() as db:
-            if protocol < 2 and db.execute('SELECT 1 FROM audit_tombstones LIMIT 1').fetchone():
-                raise Conflict('Audit maintenance requires replication protocol 2; upgrade peer')
-
-    @app.get('/replication/snapshot', dependencies=[Depends(peer_auth)])
-    def snapshot(protocol: int = 1):
-        require_protocol(protocol)
+    @app.get('/replication/snapshot', dependencies=[Depends(exchange_auth)])
+    def snapshot():
         with app.state.store.connect() as db:
             app.state.store.require_master(db)
         return app.state.store.snapshot()
 
-    @app.get('/replication/events', dependencies=[Depends(peer_auth)])
-    def events(history: str, cursor: int, protocol: int = 1):
-        require_protocol(protocol)
+    @app.get('/replication/events', dependencies=[Depends(exchange_auth)])
+    def events(history: str, cursor: int):
         return app.state.store.events(history, cursor)
 
-    @app.get('/replication/local-audit', dependencies=[Depends(peer_auth)])
+    @app.get('/replication/local-audit', dependencies=[Depends(exchange_auth)])
     def local_audit(after: int = 0, history: str = ''):
         if config.role != 'slave':
             raise Conflict('Only a slave exports pending local security events')

@@ -138,6 +138,7 @@ class RetentionTests(unittest.TestCase):
         self.b.install_snapshot(a.snapshot())
         with self.b.connect() as db:security_history=self.b.meta(db,'security_history')
         a.ingest_security(self.b.local_security_events())
+        a.set_local('peer_compatibility',{'ok':True,'at':NOW,'local_protocol_version':3,'peer_protocol_version':3})
         a.set_local('peer',{'at':NOW,'status':{'role':'slave','capabilities':[CAPABILITY], 'security_history':security_history,'security_sequence':0}})
         a.set_local('peer_ack',{'history':a.info()['history'],'sequence':a.info()['sequence']})
         execute(a,plan,NOW)

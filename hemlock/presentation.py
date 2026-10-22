@@ -4,6 +4,7 @@ import json
 import time
 from .domain import Invalid, desired, prefix
 from .observations import volatile
+from .protocol import confirmed
 
 
 def paginate(items, number, size):
@@ -98,10 +99,15 @@ class View:
         success=sync.get('last_success') or (sync.get('at') if sync.get('ok') else None)
         if not self.config.peer_url:
             status='Not configured';lag=None
+        elif sync.get('code') in ('protocol_mismatch','peer_upgrade_required','handshake_required','peer_auth_failed'):
+            status={'protocol_mismatch':'Protocol version mismatch','peer_upgrade_required':'Peer upgrade required',
+                    'handshake_required':'Handshake required','peer_auth_failed':'Authentication failed'}[sync['code']];lag=None
         elif sync.get('code')=='two_masters':
             status='Conflict: two masters';lag=None
         elif not fresh or not sync.get('ok') or worker_failed:
             status='Unavailable' if not peer.get('at') else 'Stale / unavailable';lag=None
+        elif not confirmed(self.service.store,self.now):
+            status='Handshake required';lag=None
         else:
             remote=peer.get('status') or {}
             same=remote.get('history')==self.info['history']
@@ -120,7 +126,7 @@ class View:
         if not ready:errors.append('Protection initialization incomplete; new announcements are blocked.')
         errors.extend(v['error'] for v in (self.local.get('protection_schedule') or {}).values() if v.get('error'))
         if self.bgp.get('error'):errors.append(self.bgp['error'])
-        return {'role_transition':self.transition,'peer':{'name':self.config.peer_node_id,'status':status,'healthy':status=='In sync','last_success':success,'lag':lag},
+        return {'role_transition':self.transition,'peer':{'name':self.config.peer_node_id,'status':status,'healthy':status=='In sync','last_success':success,'lag':lag,'compatibility':self.local.get('peer_compatibility') or {}},
                 'blocked':counts(applied) if applied is not None else None,'required':counts(self.routes),
                 'pending':len(pending)+len(withdrawals) if pending is not None else None,'withdrawals':len(withdrawals),'failed':len(failed) if failed is not None else None,
                 'excluded':len({e['prefix'] for e in self.excluded}),

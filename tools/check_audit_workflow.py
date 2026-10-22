@@ -15,7 +15,7 @@ import uvicorn
 from playwright.sync_api import sync_playwright, expect
 from hemlock.auth import password_hash
 from hemlock.config import Config
-from hemlock.domain import Actor, NeedSnapshot
+from hemlock.domain import Actor
 from hemlock.replication import PeerTransport, Replicator
 from hemlock.retention import execute, preview
 from hemlock.service import Service
@@ -55,12 +55,9 @@ def main():
             ar.step();br.step();ar.step()
             before_snapshot=a.snapshot();plan=preview(a);assert len(plan['payload']['entries'])==4
             execute(a,plan);br.step();ar.step()
-            try:
-                PeerTransport(bcfg).get("/replication/snapshot")
-                raise AssertionError("Legacy snapshot requester unexpectedly accepted")
-            except NeedSnapshot:
-                pass
-            br.step()  # The rejected legacy request itself is correctly audited.
+            # The single negotiated format supports snapshots after maintenance.
+            assert PeerTransport(bcfg).get('/replication/snapshot')['payload']['history']==a.info()['history']
+            br.step()
             assert a.list('audit')==b.list('audit')
             # Snapshot captured before prune, then journal catch-up over real HTTPS.
             b.install_snapshot(before_snapshot);br.step();assert a.list('audit')==b.list('audit')
@@ -73,6 +70,9 @@ def main():
             assert b.info()==old
             service.add_manual(admin,'2001:db8::1','During outage')
             launch(bcfg);br.step();ar.step();assert a.list('audit')==b.list('audit')
+            # Explicit isolated invalid-request fixture replaces the removed legacy-format rejection.
+            a.security_event('anonymous','http.request','request','invalid')
+            br.step()
             with sync_playwright() as pw:
                 spki=subprocess.check_output(['openssl','x509','-in',str(root/'tls.crt'),'-pubkey','-noout'])
                 pub=subprocess.run(['openssl','pkey','-pubin','-outform','DER'],input=spki,capture_output=True,check=True).stdout

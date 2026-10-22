@@ -1,5 +1,7 @@
 # Dependency and API baseline
 
+Compatibility in 0.4.1: explicit protocol **3**; update **B → A**, without reinstalling the slave for ordinary upgrades. [Compatibility checks and upgrade order](REPLICATION_PROTOCOL.md).
+
 Development target: Debian 13, CPython 3.13, system SQLite (3.46.1). Runtime requirements.lock and requirements-test.lock pin all resolved dependencies with hashes. Installation with --require-hashes and pip check passed on this VM. Build backend is pinned in pyproject.toml; test tools include Playwright 1.64.0, pexpect 4.9.0 and grpcio-tools 1.78.0. Lockfiles were generated with pip-tools 7.6.2. Do not silently update major versions.
 
 | Component | Selected version | Purpose |
