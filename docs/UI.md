@@ -6,7 +6,7 @@ changing Info language does not change the rest of the interface.
 
 Dashboard has two summary cards: the configured peer node's status and Blocked
 prefixes. There is no announcement-mode card. The announcements setting and
-routing semantics are unchanged. The peer heading uses peer_node_id (hemloc-b
+routing semantics are unchanged. The peer heading uses peer_node_id (hemlock-b
 is displayed as Hemlock-B); B therefore displays Hemlock-A when configured that
 way. Not configured, unavailable, stale, catching up and in-sync are distinct.
 Last successful sync is retained separately from failed attempts as local

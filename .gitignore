@@ -17,7 +17,7 @@ __pycache__/
 htmlcov/
 .ruff_cache/
 .env
-hemloc.ini
+hemlock.ini
 var/
 build/
 dist/
@@ -32,8 +32,8 @@ codex-session-*.md
 *.tar.gz
 release-artifacts/
 
-# Canonical local configuration (the existing deployment keeps hemloc.ini).
-hemlock.ini
+# Local operator configuration.
+*.local.ini
 
 # Durable role-transition fences and private staging databases.
 *.role-transition.json*

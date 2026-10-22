@@ -1,4 +1,4 @@
-"""Read-only IRR probe compatible with the installed v0.1.0 resolver."""
+"""Read-only IRR probe for the installed canonical resolver."""
 import argparse
 from contextlib import closing
 import json
@@ -104,7 +104,7 @@ def classify(error):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--config',default='/etc/hemloc/hemloc.ini')
+    parser.add_argument('--config',default='/etc/hemlock/hemlock.ini')
     parser.add_argument('--asn',action='append',required=True,type=asn)
     args = parser.parse_args()
     try:
@@ -121,7 +121,7 @@ def main():
                   'WorkingDirectory','RootDirectory','ReadWritePaths','NoExecPaths','InaccessiblePaths',
                   'SystemCallFilter']
     try:
-        process = subprocess.run(['systemctl','show','hemloc']+['--property='+p for p in properties],
+        process = subprocess.run(['systemctl','show','hemlock']+['--property='+p for p in properties],
                                  capture_output=True,text=True,timeout=5)
         unit = dict(line.split('=',1) for line in process.stdout.splitlines() if '=' in line) if process.returncode==0 else {'available':False}
     except (OSError,subprocess.SubprocessError):

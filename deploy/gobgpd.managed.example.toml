@@ -7,12 +7,12 @@ router-id = "192.0.2.10"
 port = -1
 local-address-list = ["192.0.2.10"]
 [global.apply-policy.config]
-import-policy-list = ["HEMLOC-DENY-ALL"]
-export-policy-list = ["HEMLOC-DENY-ALL"]
+import-policy-list = ["HEMLOCK-DENY-ALL"]
+export-policy-list = ["HEMLOCK-DENY-ALL"]
 default-import-policy = "reject-route"
 default-export-policy = "reject-route"
 [[policy-definitions]]
-name = "HEMLOC-DENY-ALL"
+name = "HEMLOCK-DENY-ALL"
 [[policy-definitions.statements]]
 [policy-definitions.statements.actions]
 route-disposition = "reject-route"
@@ -36,8 +36,8 @@ connect-retry = 10
 enabled = true
 multihop-ttl = 25
 [neighbors.apply-policy.config]
-import-policy-list = ["HEMLOC-DENY-ALL"]
-export-policy-list = ["HEMLOC-DENY-ALL"]
+import-policy-list = ["HEMLOCK-DENY-ALL"]
+export-policy-list = ["HEMLOCK-DENY-ALL"]
 default-import-policy = "reject-route"
 default-export-policy = "reject-route"
 [[neighbors.afi-safis]]
@@ -68,8 +68,8 @@ connect-retry = 10
 enabled = true
 multihop-ttl = 25
 [neighbors.apply-policy.config]
-import-policy-list = ["HEMLOC-DENY-ALL"]
-export-policy-list = ["HEMLOC-DENY-ALL"]
+import-policy-list = ["HEMLOCK-DENY-ALL"]
+export-policy-list = ["HEMLOCK-DENY-ALL"]
 default-import-policy = "reject-route"
 default-export-policy = "reject-route"
 [[neighbors.afi-safis]]
@@ -100,8 +100,8 @@ connect-retry = 10
 enabled = true
 multihop-ttl = 25
 [neighbors.apply-policy.config]
-import-policy-list = ["HEMLOC-DENY-ALL"]
-export-policy-list = ["HEMLOC-DENY-ALL"]
+import-policy-list = ["HEMLOCK-DENY-ALL"]
+export-policy-list = ["HEMLOCK-DENY-ALL"]
 default-import-policy = "reject-route"
 default-export-policy = "reject-route"
 [[neighbors.afi-safis]]

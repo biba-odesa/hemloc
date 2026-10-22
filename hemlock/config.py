@@ -13,7 +13,7 @@ from .domain import Invalid, Protection
 class Config:
     node_id: str = "block-a"
     role: str = "master"
-    database: str = "var/hemloc.sqlite"
+    database: str = "/var/lib/hemlock/hemlock.sqlite"
     host: str = "127.0.0.1"
     port: int = 8443
     tls: bool = True

@@ -24,23 +24,24 @@ A local RIB or export observation never proves acceptance by a remote router.
 Application defaults and all shipped examples are for documentation/testing:
 replace addresses, ASNs, protection and route attributes before deployment.
 
-## Install from the release tag
+## Debian 13 installation (0.4.0+)
 
-```bash
-git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemlock.git hemloc
-cd hemloc
-python3 -m venv .venv
-.venv/bin/python -m pip install --require-hashes -r requirements.lock
-.venv/bin/python -m pip install --require-hashes -r requirements-build.lock
-.venv/bin/python -m pip install --no-build-isolation --no-deps .
-.venv/bin/python -m pip check
-.venv/bin/python -m hemloc --help
-```
+Canonical paths and identities: `/opt/hemlock` (code/venv), `/etc/hemlock`,
+`/var/lib/hemlock`, user/group `hemlock`, `hemlock.service`, CLI/package `hemlock`.
 
-Install only after reviewing [Debian deployment](docs/DEPLOYMENT.md). Prepare
-node-specific configuration, TLS, protection and GoBGP separately. Nothing here
-automatically creates users, starts services or configures BGP neighbors. The
-[second-node guide](docs/INSTALL_B.md) also clones this repository at v0.1.0.
+- [Fresh master: step-by-step Russian guide](docs/DEPLOYMENT.md)
+- [Fresh slave and secure pairing](docs/INSTALL_B.md)
+- [Root installer](deploy/install-debian13.sh), with `--help` and read-only `--check`
+- [Update, backup, rollback and manual role changes](docs/LIFECYCLE.md)
+- [Explicit migration of previous installations](docs/MIGRATION_LEGACY.md)
+
+Install Git before cloning. Select an immutable published 0.4.0+ tag or full
+commit, verify it, then run the installer with the role, unique node/peer IDs,
+route owner, separately verified patched GoBGP binary and SHA256. The installer
+refuses existing installations; it does not initialize data, generate secrets,
+create an administrator, enable/start units or enable announcements. Prepare
+TLS, peer parameters, protection and approved route attributes before startup.
+Only the master creates the first administrator. Historical tags remain unchanged.
 
 ## Build and verify
 
@@ -74,8 +75,8 @@ are optional. Root maintenance uses interactive double entry, never passwords
 in argv:
 
 ```bash
-sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini user create operator --role admin
-sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini user reset-password operator
+sudo /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini user create operator --role admin
+sudo /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini user reset-password operator
 ```
 
 ## License
@@ -98,10 +99,10 @@ results; [batch input and limits](docs/BATCH_INPUT.md) documents retry, audit an
 single-message notification behavior. The updated light theme uses blue surfaces;
 the dark palette is retained.
 
-The corrected name is **Hemlock** (Python package/CLI `hemlock`, version 0.3.0).
-Existing active `hemloc` directories, user/service, CLI alias and wire identities
-are retained for safe upgrades. See [compatible rename](docs/RENAMING.md); do not
-mass-rename an existing deployment or use the historical v0.1.0 tag for this update.
+Version **0.4.0** removes prior aliases and uses canonical names throughout.
+Peer-header and cookie naming changes require a coordinated two-node migration;
+a mixed 0.3.x/0.4.0 pair cannot replicate. Existing node IDs, route owners, secrets,
+protection and data are preserved by the explicit migration procedure.
 Synchronization is green only for fresh **In sync** with zero lag, otherwise red.
 
 Hemlock 0.2.1 keeps current operational observations in process memory; see
@@ -112,19 +113,13 @@ A deliberate master-to-slave change resets active replicated data after backup
 and fences routing until dedicated GoBGP cleanup is verified. Upgrade both nodes
 before using this workflow; ordinary role-preserving restarts retain their data.
 
-## Updating an existing installation
+## Updating a canonical installation
 
-The executable `update.sh` fetches and installs the latest `origin` main using
-`FETCH_HEAD`; a local `origin/main` tracking ref is not required. Run it as root
-from a trusted checkout (`./update.sh`). It expects the venv at
-`/opt/hemlock/.venv`, while retaining service `hemloc`, config
-`/etc/hemloc/hemloc.ini` and backups under `/var/lib/hemloc`. It restarts only the
-application, never GoBGP. Update the slave first, verify replication, then master.
-
-Prepare the installation prefix and matching systemd ExecStart separately before
-using the script. Moving an existing venv alone leaves embedded executable paths
-unchanged; recreate it with the locked dependencies or otherwise validate its
-entry points. The script does not migrate paths or edit config/roles/units.
-If an update fails after stopping the application, it stays stopped for recovery;
-do not blindly start an incomplete installation. The backup and staging directory
-are retained. Follow the version's migration notes before installing newer main.
+Run `./update.sh --version TAG_OR_FULL_COMMIT` as root from its trusted Git checkout
+for a fixed update, or `./update.sh` to fetch the latest main. FETCH_HEAD is used,
+so origin/main is not required. The updater validates the current canonical
+installation and unchanged role/node before stopping only hemlock.service. It
+keeps a private SQLite backup and build staging directory. Failed updates stay
+stopped for recovery, not an automatic launch of a partial package. GoBGP is not
+restarted. Follow [LIFECYCLE.md](docs/LIFECYCLE.md); previous installations require
+[MIGRATION_LEGACY.md](docs/MIGRATION_LEGACY.md) first.

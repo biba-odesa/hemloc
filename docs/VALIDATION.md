@@ -44,3 +44,23 @@ See BUILD.md for exact inputs and flags; no ready-made daemon binary is in Git.
 
 The exact successful release commands/results are recorded in PLAN.md. Do not
 reuse a lab configuration or point opt-in mutation tests at a working daemon.
+
+## Canonical 0.4.0 installer validation
+
+The fresh installer completed real apt, Git, venv, hash-locked dependency and
+package installation in separate signed-bootstrap Debian 13 master/slave roots.
+A fixed local source Git snapshot and test-only URL rewrite were used because the
+candidate was not published yet. Installed package/web imports, pip check, private
+permissions and code immutability passed; no database, credentials, admin or
+service activation occurred. Repeat installation was rejected. Bash syntax and
+ShellCheck 0.10.0 passed; installed systemd units verified statically in both roots.
+
+These were chroot/mount+PID namespaces, not a booted VM with systemd PID 1. Real
+post-install OS boot and operator TLS/peer provisioning are not claimed tested by
+the installer run. Separately, actual two-process HTTPS and real isolated GoBGP
+integration/browser checks passed as recorded in PLAN.md. 172 tests discovered,
+171 passed and one opt-in skipped; dedicated real GoBGP runners passed separately.
+
+0.4.0 changes the peer header/cookie identity. Actual previous/current HTTPS peers
+fail authentication without replacing data or roles; do not interpret unchanged
+journal/prune format as mixed-version HTTP compatibility. Coordinate migration.

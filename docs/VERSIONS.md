@@ -34,7 +34,7 @@ Upstream references:
 
 Additional pinned implementation references: [Family wire values](https://github.com/osrg/gobgp/blob/v4.10.0/proto/api/common.proto), [binary NLRI/attribute handling](https://github.com/osrg/gobgp/blob/v4.10.0/pkg/apiutil/util.go). Source review is not a substitute for a daemon integration test.
 
-The optional TTL build uses **4.10.0+hemloc-ibgp-ttl1**, the same v4.10.0 API with a minimal FSM socket-TTL patch for explicitly configured iBGP TTL. The stock binary ignores multihop-ttl for internal peers. Exact patch, source/toolchain checksums and independent reproducible build instructions: [BUILD.md](BUILD.md). Do not silently replace this build with unpatched upstream when a nondefault internal-peer TTL is required.
+The optional TTL build uses **4.10.0+hemlock-ibgp-ttl1**, the same v4.10.0 API with a minimal FSM socket-TTL patch for explicitly configured iBGP TTL. The stock binary ignores multihop-ttl for internal peers. Exact patch, source/toolchain checksums and independent reproducible build instructions: [BUILD.md](BUILD.md). Do not silently replace this build with unpatched upstream when a nondefault internal-peer TTL is required.
 
 Read-only UI update projects Peer.timers / Timers.state / TimersState.uptime (google.protobuf.Timestamp) for observed session uptime. AddPath/DeletePath fields and all control behavior are unchanged.
 
@@ -47,3 +47,13 @@ replication protocol and persisted-state schema remain unchanged.
 Hemlock 0.3.0 adds startup role transitions and a private sidecar fence. Runtime
 dependencies, GoBGP v4 API and replication wire protocol stay unchanged. Local
 SQLite archives old promotion journals; deploy both nodes before role changes.
+
+## Canonical installation 0.4.0
+
+Package/CLI/user/unit and default directories are consistently hemlock. Prior
+aliases are removed. HTTP peer identity is now X-Hemlock-Node, browser cookie
+hemlock_session and theme preference hemlock-theme. Mixed 0.3.x/0.4.0 replication
+fails authentication; coordinate both-node migration using MIGRATION_LEGACY.md.
+No stored identity, route-owner, journal schema or audit-prune-v2 change is made.
+Existing release tags are immutable. The installer requires a fixed 0.4.0+ source
+commit/tag, verified patched binary/checksum, and never starts incomplete nodes.

@@ -42,7 +42,7 @@ class PeerTransport:
         if query:
             url += "?" + urlencode(query)
         request = Request(url, headers={"Authorization": "Bearer " + self.token,
-                                       "X-Hemloc-Node": self.config.node_id})
+                                       "X-Hemlock-Node": self.config.node_id})
         try:
             with self.opener.open(request, timeout=self.config.timeout) as response:
                 if response.geturl() != url:

@@ -21,7 +21,7 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--directory',required=True);args=parser.parse_args()
     output=Path(args.directory);output.mkdir(parents=True,exist_ok=False)
     with tempfile.TemporaryDirectory(prefix='hemlock-branding-') as tmp:
-        cfg=Config(tls=False,database=str(Path(tmp)/'a.sqlite'),node_id='hemloc-a',peer_node_id='hemloc-b',protected_asns=(),metadata_enabled=False)
+        cfg=Config(tls=False,database=str(Path(tmp)/'a.sqlite'),node_id='hemlock-a',peer_node_id='hemlock-b',protected_asns=(),metadata_enabled=False)
         store=Store(cfg);password='a1'+secrets.token_urlsafe(24)
         Service(store).save_user(Actor('fixture','admin'),'viewer',role='guest',password_hash=password_hash(password))
         server=uvicorn.Server(uvicorn.Config(create_app(cfg,adapter=object(),background=False),host='127.0.0.1',port=port(),proxy_headers=False,access_log=False,log_level='error'))

@@ -1,110 +1,265 @@
-# Debian 13 deployment
+# Установка master Hemlock на чистую Debian 13
 
-These commands are an operator checklist, not permission to install or start
-services. Do not change host networking, firewall or SSH. Review an existing
-installation before updating it; never overwrite its configuration or database.
-All addresses and ASNs below and in deploy/ are documentation values.
+Документ относится к канонической поставке **0.4.0 и новее**. Стандарт:
+`/opt/hemlock` (код и venv), `/etc/hemlock`, `/var/lib/hemlock`, пользователь и
+группа `hemlock`, `hemlock.service`, CLI/Python package `hemlock`.
+GoBGP — отдельные `gobgp.service`, пользователь `gobgp`, локальный gRPC.
+Существующие установки сначала проходят [явную миграцию](MIGRATION_LEGACY.md).
+Установщик ничего не мигрирует и отказывается при существующих каталогах,
+пользователях или unit. SSH, firewall и сеть автоматически не меняются.
 
-## Checkout and dependencies
+Все команды ниже — **root на новом master**, кроме явно помеченного переноса.
+Примеры IP/ASN документационные; перед применением задайте собственные значения.
 
-```bash
-sudo apt-get update
-sudo apt-get install --no-install-recommends git python3.13-venv ca-certificates tzdata bgpq4
-git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemlock.git hemloc
-cd hemloc
-```
-
-Install a separately verified GoBGP binary using [BUILD.md](BUILD.md). Hemlock
-requires the 4.10.0 API. The explicit internal-peer TTL patch is separate from
-application packaging; do not substitute a different major API.
+## 1. Система и доступы
 
 ```bash
-sudo useradd --system --user-group --home-dir /var/lib/hemloc --shell /usr/sbin/nologin hemloc
-sudo useradd --system --user-group --no-create-home --shell /usr/sbin/nologin gobgp
-sudo install -d -o root -g hemloc -m 0750 /etc/hemloc
-sudo install -d -o root -g gobgp -m 0750 /etc/gobgp
-sudo install -d -o hemloc -g hemloc -m 0700 /var/lib/hemloc
-sudo git clone --branch v0.1.0 --single-branch https://github.com/biba-odesa/hemlock.git /opt/hemloc
-sudo python3 -m venv /opt/hemloc/.venv
-sudo /opt/hemloc/.venv/bin/python -m pip install --require-hashes -r /opt/hemloc/requirements.lock
-sudo /opt/hemloc/.venv/bin/python -m pip install --require-hashes -r /opt/hemloc/requirements-build.lock
-sudo /opt/hemloc/.venv/bin/python -m pip install --no-build-isolation --no-deps /opt/hemloc
-sudo /opt/hemloc/.venv/bin/python -m pip check
-sudo install -o root -g hemloc -m 0640 deploy/hemlock.example.ini /etc/hemloc/hemloc.ini
-sudo install -o root -g gobgp -m 0640 deploy/gobgpd.example.toml /etc/gobgp/gobgpd.toml
-sudoedit /etc/hemloc/hemloc.ini
-sudo chown root:hemloc /etc/hemloc/hemloc.ini
-sudo chmod 0640 /etc/hemloc/hemloc.ini
-sudo stat -c '%U:%G %a %n' /etc/hemloc/hemloc.ini
-sudo -u hemloc test -r /etc/hemloc/hemloc.ini
+cat /etc/os-release
+timedatectl status
+hostname -f
+ip -br address
+getent hosts github.com deb.debian.org pypi.org whois.radb.net
 ```
 
-Editors can replace the INI and change its owner/mode. Repeat these checks after
-every edit; expect root:hemloc 640 and successful service-user reading.
+Ожидается Debian 13, корректное время/часовой пояс и DNS. Исправления системной
+сети/SSH/firewall выполняет оператор отдельно. Нужны исходящие HTTPS к GitHub/
+codeload, PyPI/files.pythonhosted.org, go.dev, proxy.golang.org/sum.golang.org для
+сборки; apt к выбранным Debian mirrors; **прямой TCP/43 к IRR**; доступ к
+документированным в VERSIONS.md metadata HTTP API. Между узлами — HTTPS к веб-порту
+(по умолчанию 8443). gRPC 50051 только loopback. BGP TCP/179 разрешается отдельно
+к согласованным маршрутизаторам; вебу не нужны SSH или права управления systemd.
 
-Select unique node_id and owner namespace, database path, role, peer identity,
-HTTPS binding/certificate/key/trusted CA and a private replication-token file.
-Use a separately generated token with at least 32 non-whitespace characters.
-Replace documentation ASNs, next-hops, communities, protection and proxy settings.
-Never infer IPv6 next-hop. Keep announcements=no and GoBGP peer-free at bootstrap.
-HTTP is available only as an explicitly selected local setup mode; use HTTPS for
-network access and replication. [OPERATIONS.md](OPERATIONS.md) covers TLS and SAN.
-
-## Initialize master or slave
-
-Maintenance CLI, including init-db, requires root. Initialize before starting the
-service, then transfer database/sidecar/lock ownership to the service account.
-Set role=master or role=slave explicitly in the local INI first:
+При необходимости явно задайте proxy для apt/Git/pip/downloads. Это не настройка
+proxy приложения. Не вставляйте credentials в argv или этот документ:
 
 ```bash
-sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini init-db
-sudo chown -R hemloc:hemloc /var/lib/hemloc
-sudo chmod 0700 /var/lib/hemloc
+export http_proxy='http://PROXY_HOST:PORT'
+export https_proxy="$http_proxy"
+export HTTP_PROXY="$http_proxy"
+export HTTPS_PROXY="$https_proxy"
 ```
 
-**Master only:** create the first administrator interactively:
+Без proxy удалите эти переменные и `ALL_PROXY/all_proxy`. Установщик имеет
+собственный `--proxy http://HOST:PORT`; без него downloads выполняются напрямую.
+HTTP proxy **не переносит bgpq4 TCP/43**. Master использует IRR для blocked ASN и
+protection; slave тоже самостоятельно обновляет protection и сохраняет cache при
+ошибке. После повышения slave до master TCP/43 нужен и для blocked ASN.
+
+## 2. Git, фиксированный исходник, проверенный GoBGP
+
+Git устанавливается **до** первого clone:
 
 ```bash
-sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini user create operator --role admin
+apt-get update
+apt-get install -y --no-install-recommends git ca-certificates nano
+RELEASE='<PUBLISHED_0.4_OR_LATER_TAG_OR_FULL_40_HEX_COMMIT>'
+git clone https://github.com/biba-odesa/hemlock.git /root/hemlock-source
+cd /root/hemlock-source
+git fetch origin "$RELEASE"
+COMMIT=$(git rev-parse --verify 'FETCH_HEAD^{commit}')
+git checkout --detach "$COMMIT"
+printf 'Selected commit: %s\n' "$COMMIT"
 ```
 
-**Slave:** do not create users or reset passwords. Prepare authenticated verified
-HTTPS to the master and transfer the retained local protection separately; users,
-rules, ASN sets and shared audit arrive through snapshot/journal. Follow the
-self-contained Russian [slave installation guide](INSTALL_B.md), including the
-explicit v0.1.0 protection-transfer gap and bootstrap procedure.
+Сверьте COMMIT с публикацией по независимому каналу. Пока тег 0.4.0 не выпущен,
+используйте опубликованный **полный commit**, содержащий установщик. Старый
+v0.3.0 не содержит канонической поставки; существующие теги не перемещаются.
 
-**Both roles:** install the units after reviewing their paths and permissions:
+До установщика подготовьте исполняемый GoBGP **4.10.0+hemlock-ibgp-ttl1**.
+Две независимые сборки из pinned source/Go SDK, checksum и лицензии подробно и
+копируемо приведены в [BUILD.md](BUILD.md). Альтернатива — защищённый перенос
+уже проверенного бинарника той же сборки, без конфигов/БД/ключей. На источнике
+получите `sha256sum` независимо от канала переноса; на новом сервере:
 
 ```bash
-sudo install -o root -g root -m 0644 deploy/hemlock.service /etc/systemd/system/hemloc.service
-sudo install -o root -g root -m 0644 deploy/gobgp.service /etc/systemd/system/gobgp.service
-sudo systemd-analyze verify /etc/systemd/system/hemloc.service /etc/systemd/system/gobgp.service
-sudo systemctl daemon-reload
+GOBGP_BINARY=/root/gobgpd-verified
+GOBGP_SHA='<INDEPENDENTLY_VERIFIED_SHA256>'
+printf '%s  %s\n' "$GOBGP_SHA" "$GOBGP_BINARY" | sha256sum -c -
+"$GOBGP_BINARY" --version
 ```
 
-After separate authorization start the services, verify HTTPS, local-only gRPC,
-protection initialization and disabled announcements. Configure BGP peers and
-export policies separately; never copy documentation peers into a working setup.
-Then enable autostart if appropriate. Never use multiple Uvicorn workers.
+Не заменяйте stock GoBGP другой major-версией. Не добавляйте бинарник в Git.
+При распространении сохраняются Apache-2.0 GoBGP и notices зависимостей;
+приложение — MIT. Установщик проверяет checksum и точный version marker, но
+доверие к входному checksum/происхождению сборки обеспечивает оператор.
 
-The GoBGP unit runs unprivileged without CAP_NET_BIND_SERVICE. The shipped test
-configuration uses loopback BGP port 1179 and gRPC 50051; outbound-only managed
-setups can disable the BGP listener. The gRPC bind address is set by the unit's
-command line, not by Hemlock. Do not expose it on a nonlocal address.
+## 3. Установщик (без запуска)
 
-## Source access and operator-selected announcement mode
+Выберите собственные node IDs и уникальный ownership marker, согласованный с
+маршрутными политиками. Ни ASN, ни next-hop, ни соседи установщиком не угадываются.
+Ниже marker — документационный пример, замените на свой:
 
-HTTP_PROXY/HTTPS_PROXY do not provide WHOIS transport for bgpq4. IRR requires
-TCP/43 or a separately designed transport. Slaves receive blocked ASN sets from
-the master, but refresh local protection independently and retain its cache on
-IRR failure. After promotion, IRR is also needed for blocked ASN updates.
-A changed protected-ASN configuration must be reread by Hemlock and every new
-ASN successfully initialized before taking a fresh protection export.
+```bash
+bash deploy/install-debian13.sh \
+  --role master --version "$COMMIT" --expected-commit "$COMMIT" \
+  --node-id block-a --peer-node-id block-b --owner 64512,100,1 \
+  --gobgp-binary "$GOBGP_BINARY" --gobgp-sha256 "$GOBGP_SHA" --check
+```
 
-After bootstrap, an operator may choose announcements=yes on the slave while
-retaining per-neighbor import/export DENY-ANY on the routers. This permits local
-RIB/export validation without claiming router installation. Do not automatically
-reset that chosen mode; actual policy acceptance remains a separate decision.
-See INSTALL_B.md for the copyable procedure. No service action is implied by
-this documentation update.
+После успешного preflight повторите без `--check`. Для proxy добавьте
+`--proxy http://PROXY_HOST:PORT`. Установщик ставит Git/Python venv/bgpq4 и
+зависимости по hash-lock, фиксированный исходник, проверенный binary и units;
+не создаёт секреты/БД/администратора, не включает и не запускает сервисы.
+Код/venv root-owned и недоступны сервисному пользователю на запись.
+При ошибке останется частичная установка: не стирайте её вслепую для повторения.
+
+## 4. TLS: собственный CA и IP SAN
+
+CA private key остаётся только на master либо выбранной офлайн CA-машине.
+Для этой инструкции подпись обоих сертификатов выполняется на master.
+Если CA уже существует, используйте его, не создавайте другой с тем же именем.
+
+```bash
+umask 077
+install -d -m 0700 /root/hemlock-ca
+openssl req -x509 -newkey rsa:4096 -nodes -days 3650 \
+  -keyout /root/hemlock-ca/ca.key -out /root/hemlock-ca/ca.crt \
+  -subj '/CN=Hemlock private CA' \
+  -addext 'basicConstraints=critical,CA:TRUE' \
+  -addext 'keyUsage=critical,keyCertSign,cRLSign'
+NODE_IP=192.0.2.10
+openssl req -new -newkey rsa:3072 -nodes \
+  -keyout /etc/hemlock/tls/server.key -out /root/hemlock-ca/master.csr \
+  -subj '/CN=block-a' -addext "subjectAltName=IP:$NODE_IP"
+test -s /root/hemlock-ca/master.csr
+openssl req -in /root/hemlock-ca/master.csr -noout -verify
+printf 'subjectAltName=IP:%s\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n' \
+  "$NODE_IP" > /root/hemlock-ca/master.ext
+openssl x509 -req -in /root/hemlock-ca/master.csr \
+  -CA /root/hemlock-ca/ca.crt -CAkey /root/hemlock-ca/ca.key -CAcreateserial \
+  -days 365 -sha256 -extfile /root/hemlock-ca/master.ext \
+  -out /etc/hemlock/tls/server.crt
+install -o root -g hemlock -m 0640 /root/hemlock-ca/ca.crt /etc/hemlock/tls/ca.crt
+chown root:hemlock /etc/hemlock/tls/server.key /etc/hemlock/tls/server.crt
+chmod 0640 /etc/hemlock/tls/server.key /etc/hemlock/tls/server.crt
+openssl verify -CAfile /etc/hemlock/tls/ca.crt /etc/hemlock/tls/server.crt
+openssl x509 -in /etc/hemlock/tls/server.crt -noout -checkip "$NODE_IP"
+openssl x509 -in /etc/hemlock/tls/server.crt -pubkey -noout | openssl pkey -pubin -outform DER | sha256sum
+openssl pkey -in /etc/hemlock/tls/server.key -pubout -outform DER | sha256sum
+```
+
+Последние два digest должны совпасть; приватный ключ в терминал не выводится.
+Для DNS-имён добавьте DNS SAN при подписи. Импортируйте **публичный** CA в доверие
+рабочей станции/браузера после проверки fingerprint; `verify=False` и `curl -k`
+не используются. Продление через год: новый CSR и сертификат с теми же SAN,
+проверки CA/key/SAN и перезапуск только Hemlock; ключ CA не переносится на slave.
+
+## 5. Секрет, INI и GoBGP
+
+```bash
+openssl rand -hex 32 > /etc/hemlock/replication.token
+chown root:hemlock /etc/hemlock/replication.token
+chmod 0640 /etc/hemlock/replication.token
+nano /etc/hemlock/hemlock.ini
+```
+
+Заполните существующие поля шаблона:
+
+```ini
+[node]
+node_id = block-a
+role = master
+database = /var/lib/hemlock/hemlock.sqlite
+peer_node_id = block-b
+# Empty until the slave is prepared; then use its verified HTTPS URL.
+peer_url =
+token_file = /etc/hemlock/replication.token
+
+[web]
+host = 192.0.2.10
+port = 8443
+tls = yes
+cert = /etc/hemlock/tls/server.crt
+key = /etc/hemlock/tls/server.key
+ca = /etc/hemlock/tls/ca.crt
+
+[gobgp]
+announcements = no
+grpc_target = 127.0.0.1:50051
+gobgp_service_unit = gobgp.service
+owner = 64512,100,1
+```
+
+Это фрагмент: сохраняйте остальные секции полного шаблона. Заполните protection
+собственными ASN/сетями и согласованные IPv4/IPv6 next-hop/local preference/
+communities. Если IPv6 next-hop неизвестен — оставьте пустым. Не берите значение
+из первого адреса/догадки. Пустой protected ASN разрешает только намеренно
+выбранную оператором конфигурацию, а не заменяет план защиты собственных сетей.
+Retention и notifications оставьте выключенными до отдельного включения.
+
+После редактора **всегда** проверьте права, он мог заменить файл:
+
+```bash
+chown root:hemlock /etc/hemlock/hemlock.ini
+chmod 0640 /etc/hemlock/hemlock.ini
+stat -c '%U:%G %a %n' /etc/hemlock/hemlock.ini
+runuser -u hemlock -- test -r /etc/hemlock/hemlock.ini
+runuser -u hemlock -- /opt/hemlock/.venv/bin/python -c \
+  'from hemlock.config import load; load("/etc/hemlock/hemlock.ini"); print("Config OK")'
+```
+
+GoBGP сначала настраивается **без реальных соседей**. Укажите собственный ASN и
+router-id, не копируйте документационные значения. Для подготовки можно создать
+минимальный локальный TOML, где `LOCAL_ASN`/`ROUTER_ID` уже выбраны оператором:
+
+```bash
+LOCAL_ASN='<YOUR_ASN>'
+ROUTER_ID='<YOUR_IPV4_ROUTER_ID>'
+printf '[global.config]\nas = %s\nrouter-id = "%s"\nport = -1\n' \
+  "$LOCAL_ASN" "$ROUTER_ID" > /etc/gobgp/gobgpd.toml
+chown root:gobgp /etc/gobgp/gobgpd.toml
+chmod 0640 /etc/gobgp/gobgpd.toml
+runuser -u gobgp -- /usr/local/bin/gobgpd --dry-run --pprof-disable \
+  --api-hosts=127.0.0.1:50051 -f /etc/gobgp/gobgpd.toml
+```
+
+Для пиров используйте managed template: каждый реальный сосед `admin-down=true`,
+import reject; export reject до согласования policy. `tools.export_policy`
+создаёт политику экспорта только local owned-путей, не общий allow-all. Политики
+и подключение реальных роутеров — отдельный этап, не финал установщика.
+
+## 6. Первый запуск master
+
+Только после TLS/config review:
+
+```bash
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini init-db
+chown -R hemlock:hemlock /var/lib/hemlock
+chmod 0700 /var/lib/hemlock
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini user create admin --role admin
+systemctl enable --now gobgp.service hemlock.service
+systemctl is-active gobgp.service hemlock.service
+journalctl -u hemlock.service -n 40 --no-pager
+```
+
+Пароль вводится дважды интерактивно, 6–1024 символа, минимум буква и цифра.
+GoBGP инициализируется один раз; при изменениях правил не перезапускается.
+Если порт HTTPS 443, раскомментируйте **обе** capability-строки в unit/drop-in,
+оставив NoNewPrivileges; `daemon-reload`, затем только restart hemlock.
+Проверка HTTPS без отключения доверия:
+
+```bash
+curl --noproxy '*' --cacert /etc/hemlock/tls/ca.crt \
+  "https://$NODE_IP:8443/api/session"
+```
+
+Ожидается `{"authenticated":false}`. Войдите в веб, проверьте локальную версию,
+пустой список правил, GoBGP и успешную инициализацию **всех** protected ASN.
+При добавлении protected ASN в INI нужен restart Hemlock для перечитывания и
+успешный protection refresh до экспорта cache. Ошибка источника cache не очищает.
+Сосед может пока отсутствовать — это должно быть видно как unavailable.
+
+## 7. Подключение slave и эксплуатация
+
+[INSTALL_B.md](INSTALL_B.md) — самостоятельная последовательность подготовки
+slave с CSR, безопасным переносом секрета и protection, snapshot/journal.
+На master после подготовки slave задайте его `peer_url`, `peer_node_id`, CA/secret,
+проверьте права INI и перезапустите **только Hemlock** для перечитывания.
+Одинаковый общий secret и взаимное доверие сертификатам обязательны. Node IDs
+и route owner узлов различаются. У пользователей на slave нет записи.
+
+Обновление, rollback и ручная смена ролей: [LIFECYCLE.md](LIFECYCLE.md).
+Автоматического failover/merge нет. `announcements=no` в обычной работе не отзывает
+старые маршруты; явный `routes withdraw-owned --execute` отзывает только owned.
+Исключение v0.3.0+: startup master→slave выполняет dedicated drain и durable fence.
+Локальная RIB/Adj-RIB-Out не доказывают принятие маршрута удалённым роутером.

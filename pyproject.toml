@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hemlock"
-version = "0.3.0"
+version = "0.4.0"
 description = "Safe two-node prefix blocking controller for GoBGP"
 readme = "README.md"
 license = "MIT"
@@ -26,10 +26,9 @@ integration = ["playwright==1.64.0", "pexpect==4.9.0", "grpcio-tools==1.78.0"]
 
 [project.scripts]
 hemlock = "hemlock.cli:main"
-hemloc = "hemlock.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["hemlock*", "hemloc"]
+include = ["hemlock*"]
 
 [tool.setuptools.package-data]
 hemlock = ["static/*"]

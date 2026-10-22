@@ -1,4 +1,4 @@
-"""Verified HTTPS compatibility: renamed master and actual pre-rename slave sources."""
+"""Mixed previous/canonical peer-header rejection over verified test HTTPS."""
 import importlib.util
 import argparse
 from dataclasses import asdict,replace
@@ -30,8 +30,8 @@ from tools.check_gobgp import port,wait_for
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--baseline',default='cefb7a49c2679a9d95f0c3abc566ecaf4b3530a3')
-    parser.add_argument('--package',choices=('hemloc','hemlock'),default='hemloc')
+    parser.add_argument('--baseline',default='779594070fe922c21efe7284d812c4cf1fbb0050')
+    parser.add_argument('--package',choices=('hemlock',),default='hemlock')
     args=parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='hemlock-rolling-') as tmp:
         root=Path(tmp);legacy=root/'legacy';legacy.mkdir()
@@ -57,19 +57,14 @@ def main():
                 server=uvicorn.Server(uvicorn.Config(app,host='127.0.0.1',port=config.port,ssl_certfile=config.cert,ssl_keyfile=config.key,proxy_headers=False,access_log=False,log_level='error'))
                 thread=threading.Thread(target=server.run);thread.start();servers.append(server);threads.append(thread);wait_for(lambda:server.started)
             ar=Replicator(a,PeerTransport(cfg));br=old['replication'].Replicator(b,old['replication'].PeerTransport(bcfg))
-            ar.step();br.step();ar.step()
-            result=add(Service(a),actor,'192.0.2.1,2001:db8::1,invalid-fixture','Rolling rename')
-            assert result['added']==2
-            br.step();ar.step();assert a.list('rule')==b.list('rule')
-            with httpx.Client(verify=ssl.create_default_context(cafile=cfg.ca),trust_env=False) as client:
-                signed=client.post(f'https://127.0.0.1:{p2}/api/login',json={'login':'viewer','password':password});assert signed.status_code==200
-                assert 'hemloc_session' in client.cookies
-            ar.step();br.step();ar.step()
-            assert any(e['node']=='b' and e['action']=='auth.login' for e in a.audit_history())
-            execute(a,preview(a));br.step();ar.step()
-            assert a.list('audit')==b.list('audit');assert a.get('audit',doc['id']) is None
-            b.install_snapshot(a.snapshot());assert a.list('audit')==b.list('audit')
-            print(f'PASS: current master + actual {args.baseline[:8]} slave over verified HTTPS; unchanged header/cookie/node IDs, partial batch journal, slave auth outbox, prune-v2 and schema-2 snapshot. No working nodes contacted.')
+            from hemlock.replication import PeerUnavailable
+            try:ar.step()
+            except PeerUnavailable:pass
+            assert a.local('sync',{}).get('ok') is False
+            assert a.info()['role']=='master' and b.info()['role']=='slave'
+            assert a.info()['history']==b.info()['history']
+            assert a.list('rule')==b.list('rule')
+            print('PASS: mixed canonical/previous peer headers are rejected without changing role, generation or rules. Coordinate both-node upgrade before replication resumes.')
         finally:
             for server in servers:server.should_exit=True
             for thread in threads:thread.join(15);assert not thread.is_alive()

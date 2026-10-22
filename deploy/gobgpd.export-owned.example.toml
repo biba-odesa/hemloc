@@ -7,12 +7,12 @@ router-id = "192.0.2.10"
 port = -1
 local-address-list = ["192.0.2.10"]
 [global.apply-policy.config]
-import-policy-list = ["HEMLOC-OWNED-LOCAL"]
-export-policy-list = ["HEMLOC-OWNED-LOCAL"]
+import-policy-list = ["HEMLOCK-OWNED-LOCAL"]
+export-policy-list = ["HEMLOCK-OWNED-LOCAL"]
 default-import-policy = "reject-route"
 default-export-policy = "reject-route"
 [[policy-definitions]]
-name = "HEMLOC-DENY-ALL"
+name = "HEMLOCK-DENY-ALL"
 [[policy-definitions.statements]]
 [policy-definitions.statements.actions]
 route-disposition = "reject-route"
@@ -36,8 +36,8 @@ connect-retry = 10
 enabled = true
 multihop-ttl = 25
 [neighbors.apply-policy.config]
-import-policy-list = ["HEMLOC-DENY-ALL"]
-export-policy-list = ["HEMLOC-OWNED-LOCAL"]
+import-policy-list = ["HEMLOCK-DENY-ALL"]
+export-policy-list = ["HEMLOCK-OWNED-LOCAL"]
 default-import-policy = "reject-route"
 default-export-policy = "reject-route"
 [[neighbors.afi-safis]]
@@ -68,8 +68,8 @@ connect-retry = 10
 enabled = true
 multihop-ttl = 25
 [neighbors.apply-policy.config]
-import-policy-list = ["HEMLOC-DENY-ALL"]
-export-policy-list = ["HEMLOC-OWNED-LOCAL"]
+import-policy-list = ["HEMLOCK-DENY-ALL"]
+export-policy-list = ["HEMLOCK-OWNED-LOCAL"]
 default-import-policy = "reject-route"
 default-export-policy = "reject-route"
 [[neighbors.afi-safis]]
@@ -100,8 +100,8 @@ connect-retry = 10
 enabled = true
 multihop-ttl = 25
 [neighbors.apply-policy.config]
-import-policy-list = ["HEMLOC-DENY-ALL"]
-export-policy-list = ["HEMLOC-OWNED-LOCAL"]
+import-policy-list = ["HEMLOCK-DENY-ALL"]
+export-policy-list = ["HEMLOCK-OWNED-LOCAL"]
 default-import-policy = "reject-route"
 default-export-policy = "reject-route"
 [[neighbors.afi-safis]]
@@ -115,15 +115,15 @@ enabled = true
 
 
 [[defined-sets.bgp-defined-sets.large-community-sets]]
-large-community-set-name = "HEMLOC-OWNED"
+large-community-set-name = "HEMLOCK-OWNED"
 large-community-list = ["64512:100:1"]
 [[policy-definitions]]
-name = "HEMLOC-OWNED-LOCAL"
+name = "HEMLOCK-OWNED-LOCAL"
 [[policy-definitions.statements]]
 [policy-definitions.statements.conditions.bgp-conditions]
 route-type = "local"
 [policy-definitions.statements.conditions.bgp-conditions.match-large-community-set]
-large-community-set = "HEMLOC-OWNED"
+large-community-set = "HEMLOCK-OWNED"
 match-set-options = "any"
 [policy-definitions.statements.actions]
 route-disposition = "accept-route"

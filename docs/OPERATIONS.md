@@ -1,3 +1,11 @@
+# Operations
+
+For canonical 0.4.0+ paths use [fresh master](DEPLOYMENT.md),
+[slave pairing](INSTALL_B.md), [update/backup/rollback/failover](LIFECYCLE.md)
+and [startup transition recovery](ROLE_TRANSITIONS.md). Previous installations
+require [explicit coordinated migration](MIGRATION_LEGACY.md); do not substitute
+new defaults into a running installation without inventory and backup.
+
 # Операционные процедуры и интеграционный стенд
 
 Статус проверок релиза — в VALIDATION.md. Команды ниже являются инструкцией оператору, а не отчётом о выполненных действиях. Изолированные тесты запускаются только по решению оператора; production-конфигурация и автозапуск системных сервисов в текущую проверку не входят. По умолчанию стенд использует отдельные БД, loopback HTTPS, тестовые IRR-данные и выключенные анонсы. Явный --gobgp-binary создаёт два собственных daemon без соседей и включает только запись тестовых маршрутов в их локальную RIB.
@@ -33,7 +41,7 @@ openssl verify -CAfile ca.crt -verify_hostname block-a block-a.crt
 
 Аналогично block-b. Если peer_url содержит IP, в сертификате нужен соответствующий **IP SAN**; CN недостаточно. Не добавлять рабочие IP в пример автоматически. В INI задать `tls=yes`, `cert`, `key`, `ca`, HTTPS peer_url. Проверка сертификата репликации не отключается. Приватный ключ CA не хранить на рабочих узлах; leaf-ключи и token локальные, не реплицируются.
 
-Доверие браузера: импортировать только `ca.crt` в доверенные CA браузера/клиентской ОС. Установка доверия Debian через `/usr/local/share/ca-certificates/hemloc-ca.crt` и `update-ca-certificates` меняет системное хранилище: выполнять только после отдельного согласования. Приложению достаточно явного пути `ca`, без системных изменений. Планировать обновление сертификатов до истечения и перезапускать только Hemlock для перечитывания файлов.
+Доверие браузера: импортировать только `ca.crt` в доверенные CA браузера/клиентской ОС. Установка доверия Debian через `/usr/local/share/ca-certificates/hemlock-ca.crt` и `update-ca-certificates` меняет системное хранилище: выполнять только после отдельного согласования. Приложению достаточно явного пути `ca`, без системных изменений. Планировать обновление сертификатов до истечения и перезапускать только Hemlock для перечитывания файлов.
 
 ## Подготовка двух экземпляров
 
@@ -123,14 +131,14 @@ GoBGP. Переход обратно в yes вновь приводит лока
 3. Выполнить dry-run от root, проверить target и количество путей:
 
 ```bash
-sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini routes withdraw-owned
+sudo /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini routes withdraw-owned
 ```
 
 4. После просмотра результата выполнить явный отзыв:
 
 ```bash
-sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini routes withdraw-owned --execute
-sudo /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini routes withdraw-owned
+sudo /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini routes withdraw-owned --execute
+sudo /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini routes withdraw-owned
 ```
 
 Последний dry-run должен показать `owned=0`. Команда требует announcements=no
@@ -195,8 +203,8 @@ clock, peak RSS Python, текущий RSS GoBGP, DB после checkpoint WAL. 
 GoBGP большого теста запустить в другом терминале:
 
 ```bash
-.venv/bin/python tools/check_load_transport.py --database /tmp/hemloc-load-ИМЯ/a.sqlite
-.venv/bin/python tools/check_load_transport.py --database /tmp/hemloc-load-ИМЯ/a.sqlite --journal-only
+.venv/bin/python tools/check_load_transport.py --database /tmp/hemlock-load-ИМЯ/a.sqlite
+.venv/bin/python tools/check_load_transport.py --database /tmp/hemlock-load-ИМЯ/a.sqlite --journal-only
 ```
 
 Принимается только активный временный каталог load harness. TLS CA и IP SAN

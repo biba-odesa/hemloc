@@ -6,12 +6,27 @@ separately; neither command starts a daemon, changes a service or contacts a BGP
 peer. Reproduction is byte-for-byte within the pinned toolchain/target environment,
 not a claim of identical output across arbitrary Python, zlib or CPU targets.
 
+## Select a fixed source
+
+Install Git before cloning (root: `apt-get install git python3.13-venv`). Clone
+this repository into a build directory, select an independently verified published
+0.4.0+ tag or full commit, and keep binaries under ignored var/:
+
+```bash
+git clone https://github.com/biba-odesa/hemlock.git hemlock
+cd hemlock
+RELEASE='<PUBLISHED_TAG_OR_FULL_COMMIT>'
+git fetch origin "$RELEASE"
+RELEASE=$(git rev-parse --verify 'FETCH_HEAD^{commit}')
+git checkout --detach "$RELEASE"
+```
+
 ## Python environment and artifacts
 
 ```bash
 python3 -m venv var/build-venv
 var/build-venv/bin/python -m pip install --require-hashes --only-binary=:all: -r requirements-build.lock
-var/build-venv/bin/python tools/build_release.py --ref v0.1.0 --output var/release-python
+var/build-venv/bin/python tools/build_release.py --ref "$RELEASE" --output var/release-python
 ```
 
 The tool requires setuptools 80.9.0 and wheel 0.45.1, exports the selected Git tree
@@ -28,10 +43,15 @@ dependency. pip check should pass in a fresh dedicated installation.
 
 The gRPC API is GoBGP 4.10.0 only. The patch honors configured multihop TTL for
 internal peers while retaining TTL-security precedence and external default TTL.
-The version string is 4.10.0+hemloc-ibgp-ttl1. Do not substitute a different major
+The version string is 4.10.0+hemlock-ibgp-ttl1. Do not substitute a different major
 API or assume an unpatched build has identical internal-peer socket behavior.
 
 Download the pinned archives into an ignored directory and verify these SHA256s:
+
+Use an explicit HTTPS_PROXY/http_proxy for downloads if required; the INI proxy
+is not inherited by curl, pip, Git or Go. A transfer from a trusted builder must
+include the independently obtained output SHA256 and build report.
+
 
 | Input | URL | SHA256 |
 | --- | --- | --- |
@@ -39,8 +59,19 @@ Download the pinned archives into an ignored directory and verify these SHA256s:
 | Go 1.25.14 linux-amd64 | https://go.dev/dl/go1.25.14.linux-amd64.tar.gz | a21ae5633a269bcd7e90cf767e48225633795e99d831742cbf3397064fee7712 |
 
 ```bash
+mkdir -p var/downloads
+curl --fail --location --output var/downloads/gobgp-v4.10.0-source.tar.gz \
+  https://codeload.github.com/osrg/gobgp/tar.gz/refs/tags/v4.10.0
+curl --fail --location --output var/downloads/go1.25.14.linux-amd64.tar.gz \
+  https://go.dev/dl/go1.25.14.linux-amd64.tar.gz
+printf '%s  %s\n' \
+  27d8ef958100557344be98e459fa43a20d2a15b5ce943d2aed2772958a3bf397 var/downloads/gobgp-v4.10.0-source.tar.gz \
+  a21ae5633a269bcd7e90cf767e48225633795e99d831742cbf3397064fee7712 var/downloads/go1.25.14.linux-amd64.tar.gz | sha256sum -c -
+```
+
+```bash
 var/build-venv/bin/python tools/build_release.py \
-  --ref v0.1.0 --output var/release-full \
+  --ref "$RELEASE" --output var/release-full \
   --gobgp-source var/downloads/gobgp-v4.10.0-source.tar.gz \
   --go-archive var/downloads/go1.25.14.linux-amd64.tar.gz \
   --gomodcache var/gomod --gocache var/gocache --fetch-modules
@@ -65,3 +96,20 @@ INSTALL_B.md for the application and this separate build procedure for GoBGP.
 GoBGP's unmodified Apache-2.0 license accompanies the patch. Preserve its license
 and the applicable transitive-module notices if redistributing a built binary;
 THIRD_PARTY.md distinguishes those components from Hemlock's MIT license.
+
+## Verified binary installation (fresh node only)
+
+The builder does not install services. After both builds match, inspect
+`var/release-full/build-report.json`, obtain the output digest independently,
+and verify it again at the target:
+
+```bash
+GOBGP_SHA='<VERIFIED_OUTPUT_SHA256>'
+printf '%s  %s\n' "$GOBGP_SHA" var/release-full/gobgpd-1 | sha256sum -c -
+var/release-full/gobgpd-1 --version
+```
+
+Pass this verified executable and digest to install-debian13.sh. The installer
+copies it to /usr/local/bin/gobgpd, installs gobgp.service and the upstream license,
+but does not start it or create a real-peer configuration. Never replace an active
+GoBGP during an application-only update. No prebuilt binary belongs in Git.

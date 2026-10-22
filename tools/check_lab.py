@@ -106,6 +106,7 @@ def main():
             ini=ConfigParser(interpolation=None)
             ini.read(paths[name])
             ini['gobgp'].update(announcements='yes',grpc_target=f'127.0.0.1:{grpc_port}')
+            ini['gobgp_ipv4']['next_hop']='192.0.2.254'
             ini['gobgp_ipv6']['next_hop']='2001:db8::1'
             with paths[name].open('w') as output:
                 ini.write(output)
@@ -127,7 +128,7 @@ def main():
     token = (directory/'peer.token').read_text().strip()
     def ready(name, client, history=None):
         other = 'b' if name == 'a' else 'a'
-        status = client.call('/replication/status', headers={'Authorization':'Bearer '+token, 'X-Hemloc-Node':f'block-{other}'})
+        status = client.call('/replication/status', headers={'Authorization':'Bearer '+token, 'X-Hemlock-Node':f'block-{other}'})
         return bool(status['history']) and (history is None or status['history'] == history)
     def start(name):
         logs[name] = (directory/f'{name}.log').open('ab')
@@ -199,14 +200,14 @@ def main():
         except ssl.SSLCertVerificationError:
             pass
         try:
-            a.call('/replication/status',headers={'Authorization':'Bearer rejected-test-value','X-Hemloc-Node':'block-b'})
+            a.call('/replication/status',headers={'Authorization':'Bearer rejected-test-value','X-Hemlock-Node':'block-b'})
             raise AssertionError('Invalid peer token was accepted')
         except HTTPError as exc:
             assert exc.code == 403
         result = a.call('/api/rules/manual','POST',{'value':'192.0.2.0/24','comment':'lab <script>text</script>'})
         rule_id = result['rule']['id']
         eventually(lambda: any(r['id']==rule_id for r in b.call('/api/rules')['items']))
-        peer_headers = {'Authorization':'Bearer '+token,'X-Hemloc-Node':'block-b'}
+        peer_headers = {'Authorization':'Bearer '+token,'X-Hemlock-Node':'block-b'}
         snapshot = a.call('/replication/snapshot',headers=peer_headers)
         after_snapshot = a.call('/api/rules/manual','POST',{'value':'198.51.100.0/24'})['rule']
         from urllib.parse import urlencode

@@ -184,7 +184,7 @@ class WebTests(unittest.TestCase):
         from hemlock.auth import password_verify
         self.login()
         self.assertTrue(password_verify(self.store.get('user', 'admin')['password_hash'], self.password))
-        self.assertFalse(next(c for c in self.client.cookies.jar if c.name == 'hemloc_session').secure)
+        self.assertFalse(next(c for c in self.client.cookies.jar if c.name == 'hemlock_session').secure)
         response = self.client.get('/api/users')
         self.assertNotIn('password_hash', response.text)
         self.assertEqual(response.status_code, 200)

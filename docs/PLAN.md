@@ -132,7 +132,7 @@ matching configured protection; the real second node was not contacted here.
 Public and private runbooks now identify A as the CA signer for B, guard received
 CSR signing with nonempty/openssl verification checks, and require CA/SAN/key
 checks after certificate installation. Wrapped shell commands use explicit
-continuations. Every INI edit requires root:hemloc 0640, service-user readability
+continuations. Every INI edit requires root:hemlock 0640, service-user readability
 and parsing checks because editors can replace a file and change its permissions.
 
 The guides distinguish HTTP downloads from bgpq4 TCP/43, master-only blocked-ASN
@@ -547,7 +547,7 @@ compatible. Existing release tags are not moved.
 
 ## GitHub repository URL rename
 
-Operator authorizes renaming the existing GitHub repository from hemloc to
+Operator authorizes renaming the existing GitHub repository from hemlock to
 hemlock and updating public links. Repository ID, main, annotated v0.1.0 object
 and peeled release commit are checked before/after the in-place rename. A complete
 verified local Git bundle and metadata/ref snapshot are retained outside Git.
@@ -649,9 +649,9 @@ existing release tag. Operator authorizes a normal main push, not deployment.
 Added executable root-level update.sh with the approved update sequence and
 /opt/hemlock installation prefix. It fetches refs/heads/main, resolves FETCH_HEAD
 (also works without origin/main), archives the exact fetched commit, builds a
-wheel, stops only hemloc, takes a SQLite API backup, installs locked dependencies
-and the wheel, checks the package, then starts/checks hemloc. Config/database paths
-and the existing service name remain hemloc. Bash pipefail prevents an archive
+wheel, stops only hemlock, takes a SQLite API backup, installs locked dependencies
+and the wheel, checks the package, then starts/checks hemlock. Config/database paths
+and the existing service name remain hemlock. Bash pipefail prevents an archive
 failure from being hidden by tar. The script locates its own Git checkout.
 
 Verified bash syntax and isolated command-stub success/build-failure/backup-failure
@@ -666,7 +666,7 @@ services were not modified. This script follows main, not the immutable v0.3.0 t
 Operator separately authorized updating the existing master after the slave's
 successful manual update. Installed a wheel built from published commit 7795940
 and verified first in an isolated venv. Existing installation paths were retained;
-the new /opt/hemlock updater was not run against the legacy /opt/hemloc prefix.
+the new /opt/hemlock updater was not run against the legacy /opt/hemlock prefix.
 Stopped/restarted only the application and made a normal private SQLite backup.
 
 Verified installed runtime metadata 0.3.0, pip check, CA-validated HTTPS and served
@@ -682,3 +682,78 @@ Next: operator can refresh the browser to see the local installed-version footer
 No additional config/role changes are required; deliberate failover remains a
 separate operation using docs/ROLE_TRANSITIONS.md. This deployment checkpoint is
 recorded locally; no additional publication is required for the installed source.
+
+## Canonical Debian 13 installation — 0.4.0 checkpoint
+
+Standardized package/CLI/user/group/unit and default paths on hemlock:
+/opt/hemlock, /etc/hemlock, /var/lib/hemlock. Removed previous wrapper package,
+console alias and duplicate deployment templates. Prior names occur only in the
+explicit docs/MIGRATION_LEGACY.md procedure, not active defaults/examples. Local
+ignored instructions and active installations were not rewritten. No old release
+tag is moved. Version 0.4.0 has the canonical peer header/cookie/theme key: mixed
+0.3.x/0.4.0 HTTP replication fails authentication, so migrate both nodes in a
+coordinated window while preserving their roles/identities/ownership/protection.
+Stored journal/schema-2/audit-prune-v2 formats remain unchanged. Explicit HTTPS
+mixed-version tests verify rejection without state replacement/role change.
+
+Added deploy/install-debian13.sh: root + Debian 13 + fixed tag/full SHA, explicit
+role/node IDs/owner, independently verified GoBGP binary/SHA256 and optional
+credential-free download proxy. Git is installed before clone, source is pinned,
+venv dependencies use hash locks, code is root-owned/read-only to service UID,
+config/data permissions are private. Existing paths/accounts/units refuse rather
+than overwrite. HTTPS config remains deliberately incomplete, announcements=no,
+next-hops/protected ASN/peers are not inferred. No DB/secrets/admin creation,
+unit enable or daemon start. Offline roots install units without daemon-reload;
+normal systemd hosts reload definitions only. Errors stop with a bounded message.
+The real Debian os-release VERSION collision was found and fixed by using
+RELEASE_REF, with a regression fixture containing the real-style VERSION field.
+
+Updated update.sh for canonical installations only, including pre-stop installed
+package/config/role/node checks and python -I -m hemlock maintenance calls (avoids
+stale moved-venv shebangs). Fetch uses FETCH_HEAD, supports fixed --version or
+latest main. Failures after stop do not start an incomplete installation. No path,
+role or GoBGP migration is hidden in the updater.
+
+Rewrote public master/slave installation, lifecycle and explicit legacy migration
+instructions. Migration discovers the actual service/config first, creates a new
+venv/user instead of moving venv, preserves own SQLite backup/local protection,
+TLS/node ID/owner/replication settings, never copies another node's working DB,
+and documents coordinated start/rollback and pending-fence refusal. Added the
+standalone root-only protection_transfer tool (read-only export; validated,
+locked offline slave monotonic union import); it is not a new replication channel.
+Updated source packaging to include installer/updater, locks, units, public docs,
+protection tool and TTL patch/license. The GoBGP build marker is canonical, with
+the same 4.10.0 API and unchanged socket-TTL patch; existing GoBGP is not replaced.
+
+Verification, entirely isolated:
+- 172 discovered tests: 171 passed, one opt-in live test skipped. No ResourceWarning
+  remains after explicitly closing the protection export's read-only connection.
+- Bash syntax + ShellCheck 0.10.0 clean for both scripts; stub contracts cover
+  master/slave/proxy/checksum/existing install and preflight/archive/build/backup
+  failures, with no premature stop/start and no GoBGP control.
+- Real apt/Git/venv/hash-locked pip installation in TWO separately bootstrapped,
+  signed Debian 13 roots, master and slave. Used a fixed local Git snapshot via a
+  test-only URL rewrite, not an unpublished GitHub ref. Installed 0.4.0 imports,
+  pip check, CLI identity and service-user permissions passed. No DB, token, TLS
+  key or administrator created, units not enabled, services not started; repeat
+  installation refused. No host package install or host service state/config change.
+- systemd-analyze verify passed against both installed root filesystems. This is
+  chroot/mount+PID namespace validation, NOT a booted VM/systemd PID1 service test.
+  Initial TLS/config/production-peer setup and real VM boot remain operator steps.
+- Two independent Python/source and patched GoBGP builds matched. Real loopback
+  iBGP TTL25 IPv4/IPv6 receiver attributes, owned-only export/import, web Adj-RIB-Out
+  agreement, session recovery and withdrawals passed; fixed an outdated test tool
+  to share the same process-local observations with its TestClient.
+- Two actual loopback HTTPS processes with independent test daemons passed
+  snapshot/journal, token/CA/SAN failures, slave read-only, outage/restart,
+  protection divergence, promotion/demotion and daemon recovery. Real gRPC startup
+  transition tests passed separately. EN/RU/UK dark/light/mobile browser checks
+  passed; no real notification handler was called.
+- Current-tree canonical naming scan found no prior spellings outside the explicit
+  migration guide. Staged artifact/history/privacy scans run before publication.
+
+Production A/B configs, DBs, roles, services and GoBGP were not migrated or updated.
+Next: select the published full 0.4.0 commit (until a separately approved tag exists)
+for fresh installation; review the coordinated migration guide before changing any
+existing node. Standard rolling updates apply only within the canonical compatible
+line. Both old release tags remain immutable; no production deployment is implied.

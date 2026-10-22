@@ -125,7 +125,7 @@ def create_app(config, *, adapter=None, background=True, observations=None):
         actor = getattr(request.state, 'actor', None)
         if actor is None:
             try:
-                actor, _ = app.state.auth.session(request.cookies.get('hemloc_session', ''))
+                actor, _ = app.state.auth.session(request.cookies.get('hemlock_session', ''))
             except Forbidden:
                 pass
         expected_validation = actor and actor.role == 'admin' and (status in (400, 409, 413, 415, 422) or getattr(request.state, 'expected_validation', False))
@@ -214,19 +214,19 @@ def create_app(config, *, adapter=None, background=True, observations=None):
         return JSONResponse({'error': 'Invalid request fields or field lengths'}, status_code=422)
 
     def current(request: Request):
-        actor = request.app.state.auth.session(request.cookies.get('hemloc_session', ''))[0]
+        actor = request.app.state.auth.session(request.cookies.get('hemlock_session', ''))[0]
         request.state.actor = actor
         return actor
 
     def mutation(request: Request):
-        actor, csrf = request.app.state.auth.session(request.cookies.get('hemloc_session', ''))
+        actor, csrf = request.app.state.auth.session(request.cookies.get('hemlock_session', ''))
         request.state.actor = actor
         if not secrets.compare_digest(request.headers.get('x-csrf-token', '').encode(), csrf.encode()):
             raise Forbidden('CSRF validation failed')
         return actor
 
     def peer_auth(request: Request):
-        if not request.app.state.peer.authorized(request.headers.get('authorization'), request.headers.get('x-hemloc-node')):
+        if not request.app.state.peer.authorized(request.headers.get('authorization'), request.headers.get('x-hemlock-node')):
             raise Forbidden('Peer authentication required')
 
     def page(items, q, page, size):
@@ -246,13 +246,13 @@ def create_app(config, *, adapter=None, background=True, observations=None):
     def login(body: Login, request: Request):
         token, csrf = app.state.auth.login(body.login, body.password, request.client.host if request.client else '')
         response = JSONResponse({'csrf': csrf})
-        response.set_cookie('hemloc_session', token, httponly=True, secure=config.tls, samesite='strict', max_age=8*3600, path='/')
+        response.set_cookie('hemlock_session', token, httponly=True, secure=config.tls, samesite='strict', max_age=8*3600, path='/')
         return response
 
     @app.get('/api/session')
     def session_status(request: Request):
         try:
-            app.state.auth.session(request.cookies.get('hemloc_session', ''))
+            app.state.auth.session(request.cookies.get('hemlock_session', ''))
             return {'authenticated':True}
         except Forbidden:
             return {'authenticated':False}
@@ -260,7 +260,7 @@ def create_app(config, *, adapter=None, background=True, observations=None):
     @app.get('/api/me')
     def me(request: Request, actor=Depends(current)):
         from .installed import application_identity
-        _, csrf = app.state.auth.session(request.cookies.get('hemloc_session', ''))
+        _, csrf = app.state.auth.session(request.cookies.get('hemlock_session', ''))
         return {'login': actor.login, 'role': actor.role, 'node_role': config.role, 'node_id': config.node_id, 'csrf': csrf,
                 'password_change_node': config.node_id if config.role=='master' else config.peer_node_id,
                 'batch_max_items':config.batch_max_items, 'request_max_bytes':config.request_max_bytes,
@@ -268,9 +268,9 @@ def create_app(config, *, adapter=None, background=True, observations=None):
 
     @app.post('/api/logout')
     def logout(request: Request, actor=Depends(mutation)):
-        app.state.auth.logout(request.cookies.get('hemloc_session', ''))
+        app.state.auth.logout(request.cookies.get('hemlock_session', ''))
         response = JSONResponse({'ok': True})
-        response.delete_cookie('hemloc_session', path='/', secure=config.tls, httponly=True, samesite='strict')
+        response.delete_cookie('hemlock_session', path='/', secure=config.tls, httponly=True, samesite='strict')
         return response
 
     @app.post('/api/password')

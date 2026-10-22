@@ -5,24 +5,24 @@ Wants=network-online.target gobgp.service
 
 [Service]
 Type=simple
-User=hemloc
-Group=hemloc
-WorkingDirectory=/opt/hemloc
-ExecStart=/opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini serve
+User=hemlock
+Group=hemlock
+WorkingDirectory=/opt/hemlock
+ExecStart=/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini serve
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=120
 UMask=0077
-StateDirectory=hemloc
+StateDirectory=hemlock
 StateDirectoryMode=0700
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/hemloc
+ReadWritePaths=/var/lib/hemlock
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 CapabilityBoundingSet=
-# Optional privileged HTTPS port (e.g. 443) while still running as user hemloc.
+# Optional privileged HTTPS port (e.g. 443) while still running as user hemlock.
 # Uncomment BOTH lines below; keep the empty capability reset above.
 # Grant only the bind capability to this service; keep NoNewPrivileges enabled.
 # CapabilityBoundingSet=CAP_NET_BIND_SERVICE

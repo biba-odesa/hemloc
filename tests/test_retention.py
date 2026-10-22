@@ -201,10 +201,11 @@ class RetentionTests(unittest.TestCase):
     def test_actual_v010_store_works_before_prune_and_rejects_v2(self):
         import importlib.util,subprocess,tarfile,io,sys
         root=Path(self.tmp.name)/'legacy';root.mkdir()
-        archive=subprocess.check_output(['git','archive','v0.1.0','hemloc'])
+        archive=subprocess.check_output(['git','archive','v0.1.0'])
         with tarfile.open(fileobj=io.BytesIO(archive)) as tar:tar.extractall(root,filter='data')
-        name='hemloc_legacy_retention_test'
-        spec=importlib.util.spec_from_file_location(name,root/'hemloc/__init__.py',submodule_search_locations=[str(root/'hemloc')])
+        package=next(p for p in root.iterdir() if p.is_dir() and (p/'store.py').exists())
+        name='hemlock_legacy_retention_test'
+        spec=importlib.util.spec_from_file_location(name,package/'__init__.py',submodule_search_locations=[str(package)])
         module=importlib.util.module_from_spec(spec);sys.modules[name]=module;spec.loader.exec_module(module)
         legacy=__import__(name+'.store',fromlist=['Store'])
         old=legacy.Store(self.b.config)
@@ -239,7 +240,8 @@ class RetentionTests(unittest.TestCase):
         self.assertTrue(export(self.a,dest)['written']);self.assertEqual(dest.stat().st_mode & 0o777,0o600)
         with self.assertRaises(FileExistsError):export(self.a,dest)
         plan=Path(self.tmp.name)/'plan.json';write_private(plan,preview(self.a,NOW));self.assertEqual(plan.stat().st_mode & 0o777,0o600)
-        cfg=load('deploy/hemlock.example.ini');self.assertFalse(cfg.retention_enabled);self.assertFalse(cfg.notifications_enabled)
+        example=Path(self.tmp.name)/'example.ini';example.write_text(Path('deploy/hemlock.example.ini').read_text().replace('tls = yes','tls = no'))
+        cfg=load(str(example));self.assertFalse(cfg.retention_enabled);self.assertFalse(cfg.notifications_enabled)
         for change in ({'blocklist_days':0},{'cleanup_time':'25:00'},{'retention_timezone':'Nowhere/Invalid'},{'notification_workers':100}):
             with self.assertRaises(Invalid):replace(self.cfg,**change).validate()
 

@@ -26,7 +26,7 @@ def main():
     args=parser.parse_args()
     output=Path(args.directory);output.mkdir(parents=True,exist_ok=False)
     with tempfile.TemporaryDirectory(prefix='hemlock-ui-redesign-') as tmp:
-        cfg=Config(tls=False,database=str(Path(tmp)/'a.sqlite'),node_id='hemloc-a',peer_node_id='hemloc-b',
+        cfg=Config(tls=False,database=str(Path(tmp)/'a.sqlite'),node_id='hemlock-a',peer_node_id='hemlock-b',
                    protected_asns=(),protected_prefixes=(),metadata_enabled=False,announcements=True,v6_next_hop='2001:db8::1')
         store=Store(cfg);service=Service(store);actor=Actor('lab','admin');password='a1'+secrets.token_urlsafe(24)
         service.save_user(actor,'admin',role='admin',password_hash=password_hash(password))

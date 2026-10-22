@@ -1,5 +1,10 @@
 # Sign-in and manual IP batches
 
+Current 0.4.0 note: the stored audit-prune-v2/schema-2 format is unchanged, but
+HTTP peer identity naming changed. Both endpoints must be upgraded using
+MIGRATION_LEGACY.md before replication or retention is enabled; historical
+storage-format compatibility below does not promise mixed HTTP interoperability.
+
 This update is source-only until separately installed. It does not change route
 attributes, GoBGP sessions, protection semantics or replication ownership.
 

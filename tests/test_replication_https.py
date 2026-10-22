@@ -46,7 +46,7 @@ class HTTPSReplicationTests(unittest.TestCase):
                 def log_message(self,*args):
                     pass
                 def do_GET(self):
-                    if self.headers.get('Authorization')!='Bearer '+token or self.headers.get('X-Hemloc-Node')!='b':
+                    if self.headers.get('Authorization')!='Bearer '+token or self.headers.get('X-Hemlock-Node')!='b':
                         self.send_error(403)
                         return
                     url=urlsplit(self.path)

@@ -40,12 +40,15 @@ class SafetyTests(unittest.TestCase):
             pass
 
     def test_example_config_and_family_settings(self):
-        cfg = load('deploy/hemlock.example.ini')
+        with self.assertRaises(Invalid):load('deploy/hemlock.example.ini')
+        example=Path(self.tmp.name)/'example.ini'
+        example.write_text(Path('deploy/hemlock.example.ini').read_text().replace('tls = yes','tls = no'))
+        cfg = load(str(example))
         self.assertFalse(cfg.announcements)
         self.assertFalse(cfg.tls)
-        self.assertEqual(cfg.v4_next_hop, '192.0.2.254')
+        self.assertEqual(cfg.v4_next_hop, '')
         self.assertEqual(cfg.v6_next_hop, '')
-        self.assertEqual(cfg.protected_asns, (64496,))
+        self.assertEqual(cfg.protected_asns, ())
         for changes in [{'peer_url':'http://peer'}, {'owner':(1,2)}, {'community':'666:999999'}, {'grpc_target':'router:50051'}]:
             with self.subTest(changes=changes), self.assertRaises(Invalid):
                 replace(cfg, **changes).validate()

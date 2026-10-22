@@ -16,7 +16,7 @@ class ArtifactTests(unittest.TestCase):
         self.assertEqual(inspect_artifact('accidental.txt',encoded),['password-hash-content'])
 
     def test_code_and_documentation_are_allowed(self):
-        self.assertEqual(inspect_artifact('hemloc/auth.py',b'code'),[])
+        self.assertEqual(inspect_artifact('hemlock/auth.py',b'code'),[])
         self.assertEqual(inspect_artifact('docs/PLAN.md',b'status'),[])
         self.assertEqual(inspect_artifact('requirements.lock',b'package==1'),[])
 

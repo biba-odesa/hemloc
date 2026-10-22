@@ -73,8 +73,8 @@ enabled = true
 ''')
                 if args.owned_policy and index == 0:
                     from tools.export_policy import owned_local_config
-                    text=path.read_text().replace('[[neighbors]]', '[global.apply-policy.config]\nimport-policy-list = ["HEMLOC-DENY-ALL"]\nexport-policy-list = ["HEMLOC-DENY-ALL"]\ndefault-import-policy = "reject-route"\ndefault-export-policy = "reject-route"\n[[neighbors]]',1)
-                    text+='\n[[policy-definitions]]\nname="HEMLOC-DENY-ALL"\n[[policy-definitions.statements]]\n[policy-definitions.statements.actions]\nroute-disposition="reject-route"\n'
+                    text=path.read_text().replace('[[neighbors]]', '[global.apply-policy.config]\nimport-policy-list = ["HEMLOCK-DENY-ALL"]\nexport-policy-list = ["HEMLOCK-DENY-ALL"]\ndefault-import-policy = "reject-route"\ndefault-export-policy = "reject-route"\n[[neighbors]]',1)
+                    text+='\n[[policy-definitions]]\nname="HEMLOCK-DENY-ALL"\n[[policy-definitions.statements]]\n[policy-definitions.statements.actions]\nroute-disposition="reject-route"\n'
                     path.write_text(owned_local_config(text,(64512,100,1)))
                 if args.ttl:
                     with path.open('a') as output:
@@ -114,7 +114,7 @@ enabled = true
                 assert not p.local
                 assert (p.next_hop, p.local_pref, p.communities) == rec.attributes(p.prefix)[:3]
             service.save_user(actor, 'lab', role='admin', password_hash=password_hash('Isolated-peer-password-123'))
-            with TestClient(create_app(a.config, adapter=a, background=False)) as client:
+            with TestClient(create_app(a.config, adapter=a, background=False, observations=service.store.observations)) as client:
                 assert client.post('/api/login', json={'login':'lab', 'password':'Isolated-peer-password-123'}).status_code == 200
                 observe_bgp(service.store, a)
                 response = client.get('/api/observation')

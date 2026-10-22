@@ -55,9 +55,11 @@ normal CLI SQLite backup, install the new wheel in its existing venv, run pip
 check and verify the installed version with `python -I`. Start only the same
 application service and verify HTTPS and fresh zero-lag replication. Never run
 init-db or create a new administrator on the slave. Do not restart GoBGP.
-If replacing the historical `hemloc` distribution, follow RENAMING.md's uninstall
-ordering; current `hemlock` is updated directly. On installation failure reinstall
-the prepared old wheel. Do not restore/replace the DB merely for a package error.
+Version 0.4.0 uses the canonical installation and peer header. The historical
+rolling checks below describe the observation-cache change, not compatibility of
+0.4.0 with previous HTTP endpoints. Follow MIGRATION_LEGACY.md for existing nodes;
+use LIFECYCLE.md for subsequent compatible canonical updates. On installation
+failure use the reviewed rollback plan, not an automatic database replacement.
 
 ## Verification and limits
 

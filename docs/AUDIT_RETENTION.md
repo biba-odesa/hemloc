@@ -1,5 +1,10 @@
 # History, audit retention и внешние уведомления
 
+Current 0.4.0 note: the stored audit-prune-v2/schema-2 format is unchanged, but
+HTTP peer identity naming changed. Both endpoints must be upgraded using
+MIGRATION_LEGACY.md before replication or retention is enabled; historical
+storage-format compatibility below does not promise mixed HTTP interoperability.
+
 Реализовано в исходниках после v0.1.0; установка этого изменения — отдельное
 действие оператора. Defaults: retention и notifications выключены. Не запускать
 очистку рабочей БД без предварительного просмотра точного состава удаления.
@@ -140,14 +145,14 @@ slave. Нет гарантии сохранения ещё не доставле
 доступным этому пользователю; не помещать файлы в Git. Например, как root:
 
 ```bash
-install -d -o hemloc -g hemloc -m 0700 /var/lib/hemloc/audit-exports
-hemlock --config /etc/hemloc/hemloc.ini audit preview \
-  --output /var/lib/hemloc/audit-exports/plan.json
-hemlock --config /etc/hemloc/hemloc.ini audit export
-hemlock --config /etc/hemloc/hemloc.ini audit export \
-  --output /var/lib/hemloc/audit-exports/audit.jsonl --execute
-hemlock --config /etc/hemloc/hemloc.ini audit prune \
-  --plan /var/lib/hemloc/audit-exports/plan.json
+install -d -o hemlock -g hemlock -m 0700 /var/lib/hemlock/audit-exports
+hemlock --config /etc/hemlock/hemlock.ini audit preview \
+  --output /var/lib/hemlock/audit-exports/plan.json
+hemlock --config /etc/hemlock/hemlock.ini audit export
+hemlock --config /etc/hemlock/hemlock.ini audit export \
+  --output /var/lib/hemlock/audit-exports/audit.jsonl --execute
+hemlock --config /etc/hemlock/hemlock.ini audit prune \
+  --plan /var/lib/hemlock/audit-exports/plan.json
 ```
 
 Preview показывает counts по категориям, cutoffs, policy, историю и digest; файл
@@ -160,8 +165,8 @@ request context не экспортируется. Не выводите сод�
 проверить сроки и исключения последних пяти входов. Только после разрешения:
 
 ```bash
-hemlock --config /etc/hemloc/hemloc.ini audit prune \
-  --plan /var/lib/hemloc/audit-exports/plan.json --execute
+hemlock --config /etc/hemlock/hemlock.ini audit prune \
+  --plan /var/lib/hemlock/audit-exports/plan.json --execute
 ```
 
 Это ручное действие применяет сохранённый план, не заново вычисленный расширенный
@@ -235,17 +240,17 @@ Errors & security и ограниченная запись journal с reason/exi
 
 ```bash
 printf '%s\n' '{"subject":"Hemlock test","body":"Test notification"}' | \
-  sudo -u hemloc /usr/sbin/notify_script
+  sudo -u hemlock /usr/sbin/notify_script
 ```
 
 Handler и его родительские каталоги не должны быть writable пользователем Hemlock.
-Например root:hemloc 0750 для executable, root:hemloc 0640 для отдельного файла
+Например root:hemlock 0750 для executable, root:hemlock 0640 для отдельного файла
 credentials, закрытые родительские каталоги. Credentials выбирает/читает только
 handler; Hemlock их не конфигурирует, не получает и не хранит. Не класть их в argv,
 Git, /home или /root.
 
-Поставляемый unit: User/Group hemloc, NoNewPrivileges, пустой CapabilityBoundingSet,
-ProtectHome, ProtectSystem=strict, PrivateTmp, writable `/var/lib/hemloc`,
+Поставляемый unit: User/Group hemlock, NoNewPrivileges, пустой CapabilityBoundingSet,
+ProtectHome, ProtectSystem=strict, PrivateTmp, writable `/var/lib/hemlock`,
 RestrictAddressFamilies AF_UNIX/AF_INET/AF_INET6. Поэтому тест `sudo -u` не полностью
 воспроизводит sandbox сервиса: handler не видит home/root, общий /tmp, не может
 писать произвольно в /etc или повышать privileges. Файлы в /etc можно читать при

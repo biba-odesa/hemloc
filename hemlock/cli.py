@@ -26,7 +26,7 @@ def prompt_password():
 def main(argv=None):
     os.umask(0o077)
     parser = argparse.ArgumentParser(prog='hemlock')
-    parser.add_argument('--config', default='/etc/hemloc/hemloc.ini')
+    parser.add_argument('--config', default='/etc/hemlock/hemlock.ini')
     sub = parser.add_subparsers(dest='command', required=True)
     sub.add_parser('serve')
     sub.add_parser('init-db')

@@ -9,7 +9,7 @@ import unittest
 from hemlock.config import Config
 from hemlock.gobgp import GoBGP
 
-TARGET = os.environ.get('HEMLOCK_LIVE_GOBGP', os.environ.get('HEMLOC_LIVE_GOBGP', ''))
+TARGET = os.environ.get('HEMLOCK_LIVE_GOBGP', '')
 
 
 @unittest.skipUnless(TARGET, 'Explicit isolated GoBGP target not provided')

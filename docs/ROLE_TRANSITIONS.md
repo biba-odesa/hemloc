@@ -1,4 +1,4 @@
-# Startup role transitions — 0.3.0
+# Startup role transitions — introduced in 0.3.0, canonical paths in 0.4.0
 
 This version must be installed on both nodes before deliberately changing roles.
 An operator selects and isolates the authoritative master. There is no automatic
@@ -122,7 +122,7 @@ Run CLI as root using the installed venv/config. It drops to the database/state
 owner and does not gain service-control privileges:
 
 ```bash
-/opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini transition status
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini transition status
 ```
 
 Rollback returns data to the time of the old backup. First select one authoritative
@@ -138,27 +138,27 @@ reuse current WAL/SHM alongside the restored file. The backup created by this
 transition is checkpointed, closed and has no sidecars.
 
 ```bash
-systemctl stop hemloc
-# Set role=master in the local INI; recheck root:hemloc 0640 after editing.
-DATABASE=/var/lib/hemloc/hemloc.sqlite
-BACKUP=/var/lib/hemloc/hemloc.sqlite.backup-UTC_TIMESTAMP-TRANSITION_UUID
+systemctl stop hemlock
+# Set role=master in the local INI; recheck root:hemlock 0640 after editing.
+DATABASE=/var/lib/hemlock/hemlock.sqlite
+BACKUP=/var/lib/hemlock/hemlock.sqlite.backup-UTC_TIMESTAMP-TRANSITION_UUID
 if test -e "$DATABASE"; then
-  /opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini \
+  /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini \
     transition checkpoint --execute
 fi
 SAVED=$(mktemp -d "${DATABASE}.before-restore.XXXXXX")
-chown hemloc:hemloc "$SAVED"
+chown hemlock:hemlock "$SAVED"
 for FILE in "$DATABASE" "$DATABASE-wal" "$DATABASE-shm" "$DATABASE-journal"; do
   if test -e "$FILE"; then
     mv -n -- "$FILE" "$SAVED/"
   fi
 done
-install -o hemloc -g hemloc -m 0600 "$BACKUP" "$DATABASE"
-/opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini \
+install -o hemlock -g hemlock -m 0600 "$BACKUP" "$DATABASE"
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini \
   transition reset-after-restore "$BACKUP"
-/opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini \
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini \
   transition reset-after-restore "$BACKUP" --execute
-systemctl start hemloc
+systemctl start hemlock
 ```
 
 Stop if any command fails. Checkpoint/close all clients **before** moving files.
@@ -171,43 +171,12 @@ authoritative history occurs. Review HTTPS, generation/cursors, protection and
 local/peer routes before restoring BGP connectivity. If no backup was created yet,
 repair the failure and resume demotion rather than deleting the marker.
 
-## Short A/B update procedure (prepare only)
+## Updating the two nodes
 
-Do not run against production until this local commit has been reviewed and
-published or a verified wheel has been separately transferred. Update slave B,
-then master A, keeping their existing roles throughout the update. Do not copy
-configs/databases between nodes. Verify ordinary restarts preserve history,
-cursors, protection and BGP. Change roles only after both run this version.
-
-On each node use its actual Git source checkout (the installed /opt/hemloc may be
-only a venv/source copy), root shell, and a fixed approved commit:
-
-```bash
-cd SOURCE_CHECKOUT
-git status --short
-# Stop for unexpected tracked changes. Configure this shell's download proxy if needed.
-git fetch origin main
-STAGE=$(mktemp -d /var/tmp/hemlock-update.XXXXXX)
-git archive APPROVED_COMMIT | tar -x -C "$STAGE"
-/opt/hemloc/.venv/bin/python -m pip install --require-hashes \
-  -r "$STAGE/requirements-build.lock"
-/opt/hemloc/.venv/bin/python -m pip wheel --no-deps --no-build-isolation \
-  --wheel-dir "$STAGE/wheels" "$STAGE"
-systemctl stop hemloc
-/opt/hemloc/.venv/bin/hemloc --config /etc/hemloc/hemloc.ini backup \
-  "/var/lib/hemloc/before-0.3.0-$(date +%Y%m%d-%H%M%S).sqlite"
-/opt/hemloc/.venv/bin/python -m pip install --no-deps --force-reinstall \
-  "$STAGE/wheels/hemlock-0.3.0-py3-none-any.whl"
-/opt/hemloc/.venv/bin/python -m pip check
-/opt/hemloc/.venv/bin/python -I -c \
-  'import hemlock; print(hemlock.__version__); assert hemlock.__version__ == "0.3.0"'
-systemctl start hemloc
-systemctl is-active hemloc
-```
-
-Prepare the previous source wheel and normal SQLite backup before replacing the
-package. Keep the existing HTTPS port capability override and local Talk handler.
-No feature is enabled by this update. No daemon restart or network change is
-required. Review the optional read-only `gobgp_service_unit` default if your daemon
-has a different unit name. A global reset/drain is never a normal restart action;
-it requires detecting saved master → configured slave or resuming its marker.
+For canonical installations follow [LIFECYCLE.md](LIFECYCLE.md): approved fixed
+source, backup, update slave then master within a compatible version line; keep
+roles/identities/config and GoBGP unchanged. Upgrading a previous installation to
+0.4.0 requires the coordinated [migration](MIGRATION_LEGACY.md) instead, because
+both endpoints must use the canonical peer header. Do not invoke a fresh installer
+on existing data. Both nodes need role-transition support before deliberate role
+changes, and pending fences must not be downgraded or bypassed.

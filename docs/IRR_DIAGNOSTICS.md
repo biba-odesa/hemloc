@@ -1,3 +1,9 @@
+# Current resolver diagnostics
+
+Use this tool with the canonical 0.4.0+ installed package. Earlier-release
+behaviour below is historical analysis; it is not a claim that the current tool
+can import removed old package aliases. Existing nodes need MIGRATION_LEGACY.md.
+
 # Read-only IRR and protection diagnosis
 
 The initial installation release v0.1.0 runs two separate processes per ASN:
@@ -35,13 +41,13 @@ schedule or cache to hide an error.
 ## Probe compatible with the original installed resolver
 
 The follow-up helper tools/diagnose_irr.py can be copied as standalone Python text
-and run with the installed venv, including v0.1.0. It is not present in that old
+and run with the installed venv, for the matching canonical release. It is not present in the historical
 tag, so do not assume that path already exists on an old checkout. Example after
 placing the helper at a readable local path (choose actual operator targets):
 
 ```bash
-sudo -u hemloc /opt/hemloc/.venv/bin/python -B /tmp/diagnose_irr.py \
-  --config /etc/hemloc/hemloc.ini --asn 64496 --asn 64497
+sudo -u hemlock /opt/hemlock/.venv/bin/python -B /tmp/diagnose_irr.py \
+  --config /etc/hemlock/hemlock.ini --asn 64496 --asn 64497
 ```
 
 Alternatively feed the exact helper source on stdin with python -B - and the
@@ -64,8 +70,8 @@ fixed stderr hint. A shell success is not proof of a service-context success.
 ## systemd differs from sudo -u
 
 The shipped service has NoNewPrivileges, PrivateTmp, ProtectSystem=strict,
-ProtectHome, a write allowance only for /var/lib/hemloc, no capabilities and
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6. It sets WorkingDirectory=/opt/hemloc.
+ProtectHome, a write allowance only for /var/lib/hemlock, no capabilities and
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6. It sets WorkingDirectory=/opt/hemlock.
 The shipped unit does not set PrivateNetwork or IPAddressDeny. Installed drop-ins
 can differ; the probe displays selected actual effective properties, not secret
 Environment values. It also shows the calling process's NoNewPrivs/Seccomp/CapEff.
@@ -90,7 +96,7 @@ Logs use the configured uvicorn.error logger hierarchy, captured by systemd.
 Tests use real subprocess timeouts/nonzero exits/error stderr, malformed responses,
 a real bgpq4 with a loopback IRRD (including each empty family), persisted retry
 and successful recovery with cache preservation. The read-only helper is also
-tested with the original v0.1.0 modules. No production failure is deliberately
+tested originally with the initial-release modules; rerun against the installed canonical resolver. No production failure is deliberately
 injected. No timer, routing or replication behavior is changed by this follow-up.
 
 On an affected host: first save the read-only probe output. If failure reproduces,

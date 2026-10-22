@@ -67,7 +67,7 @@ def main():
                 if number==1:artifacts.append(artifact)
         with tarfile.open(next((out/'python-1').glob('*.tar.gz'))) as archive:
             names=archive.getnames()
-            required=['requirements.lock','requirements-test.lock','requirements-build.lock','deploy/hemloc.service','deploy/gobgp.service','deploy/hemloc.example.ini','deploy/patches/gobgp-4.10.0-ibgp-ttl.patch','docs/OPERATIONS.md','tools/build_release.py']
+            required=['requirements.lock','requirements-test.lock','requirements-build.lock','deploy/hemlock.service','deploy/gobgp.service','deploy/hemlock.example.ini','deploy/patches/gobgp-4.10.0-ibgp-ttl.patch','docs/OPERATIONS.md','tools/build_release.py','deploy/install-debian13.sh','update.sh','docs/DEPLOYMENT.md','docs/INSTALL_B.md','docs/LIFECYCLE.md','docs/MIGRATION_LEGACY.md','tools/protection_transfer.py']
             for name in required:
                 if not any(p.endswith('/'+name) for p in names):raise RuntimeError('Missing from sdist: '+name)
         if bool(args.gobgp_source)!=bool(args.go_archive):raise SystemExit('Supply both verified source and Go toolchain archives')
@@ -89,7 +89,7 @@ def main():
                 with (out/f'go-{number}.log').open('wb') as log:
                     if number==1 and args.fetch_modules:run([go,'mod','download'],cwd=source,env=goenv|{'GOPROXY':'https://proxy.golang.org'},stdout=log,stderr=log)
                     run([go,'mod','verify'],cwd=source,env=goenv,stdout=log,stderr=log)
-                    run([go,'build','-p=2','-mod=readonly','-trimpath','-buildvcs=false','-ldflags','-buildid= -X github.com/osrg/gobgp/v4/internal/pkg/version.METADATA=hemloc-ibgp-ttl1','-o',str(binary),'./cmd/gobgpd'],cwd=source,env=goenv,stdout=log,stderr=log)
+                    run([go,'build','-p=2','-mod=readonly','-trimpath','-buildvcs=false','-ldflags','-buildid= -X github.com/osrg/gobgp/v4/internal/pkg/version.METADATA=hemlock-ibgp-ttl1','-o',str(binary),'./cmd/gobgpd'],cwd=source,env=goenv,stdout=log,stderr=log)
                 results.setdefault('gobgpd',[]).append(sha(binary))
             run([out/'gobgpd-1','--version'])
     if any(len(set(pair))!=1 for pair in results.values()):raise RuntimeError('Independent builds differ')

@@ -15,7 +15,7 @@ class PresentationTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory()
         self.cfg=Config(database=str(Path(self.tmp.name)/'a.sqlite'),tls=False,protected_asns=(),protected_prefixes=(),
-                        announcements=True,v6_next_hop='2001:db8::1',node_id='hemloc-a',peer_node_id='hemloc-b')
+                        announcements=True,v6_next_hop='2001:db8::1',node_id='hemlock-a',peer_node_id='hemlock-b')
         self.store=Store(self.cfg);self.service=Service(self.store);actor=Actor('operator','admin')
         for value,comment in [('192.0.2.0/24','network'),('192.0.2.1','reason one'),('2001:db8::9','v6')]:
             self.service.add_manual(actor,value,comment)
