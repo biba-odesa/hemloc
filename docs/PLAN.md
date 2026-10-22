@@ -953,3 +953,13 @@ no remote configuration/service/BGP change was performed by this update.
 Next: operator reviews fresh slave protection/readiness and separately authorizes
 its BGP participation. Do not remove either private rollback archive yet. The
 fresh-installer release tags and published source commit remain unchanged.
+
+
+## README cleanup
+
+Removed historical release announcements and the old one-off pair-reinstallation
+links from README. Kept current installation/update/safety guidance and a compact
+set of operational links; moved licensing back to the end. Detailed legacy
+migration/reference documents and all published tags/history remain intact.
+Checked README relative links and Git diff; no runtime tests needed for text-only
+changes. No production operation.
