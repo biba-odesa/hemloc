@@ -1109,3 +1109,16 @@ Release 0.5.1 publication and existing-master package update are explicitly
 authorized; preserve all existing local paths, config, keys, trust and data.
 The operator updates the slave separately with update.sh; no new approval or
 configuration change is required for this cosmetic update.
+
+Publication/deployment result: ordinary main push completed. Built the 0.5.1
+wheel from committed Git archive, saved private old-venv/config/TLS/unit and
+stopped-application SQLite backups, and updated only the existing master package.
+An overly restrictive installer umask initially made new package files unreadable
+by the service account; corrected the installed package to normal read/execute
+permissions and verified imports as that account before restarting the application.
+No project behavior or service sandbox change was needed. Verified active HTTPS,
+unchanged config/keys/pin, non-audit documents, protection and history identity,
+SQLite integrity, identical observed RIB, unchanged GoBGP PID and peer establishment
+timestamps. Authenticated status checked as the service account confirms matching
+history, zero lag and acknowledged security outbox against the still-0.5.0 slave.
+The slave was not updated. No GoBGP operations or production test notifications.
