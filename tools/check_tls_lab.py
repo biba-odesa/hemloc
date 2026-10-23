@@ -72,28 +72,47 @@ def main():
                 for theme in ('dark','light'):
                     if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme').click()
                     expect(page.locator('#peer-state')).to_have_text('Peer approval required')
-                    expect(page.locator('#peer-tls')).to_contain_text('SHA256:')
+                    expect(page.locator('#peer-state')).to_have_class('sync-pending')
+                    expect(page.locator('#peer-tls')).to_have_count(0)
+                    expect(page.locator('#review-connection')).to_be_visible()
                     page.screenshot(path=str(output/(theme+'-approval.png')),full_page=True)
+                page.get_by_role('button',name='Review connection',exact=True).click()
+                expect(page.locator('#title')).to_have_text('Settings')
+                expect(page.locator('#peer-tls')).to_contain_text('SHA256:')
                 page.get_by_role('button',name='Approve peer certificate',exact=True).click()
                 wait_for(lambda:Trust(configs[0]).pin() is not None)
                 expect(page.locator('#peer-tls')).not_to_contain_text('Approved fingerprintNone')
                 candidate=Trust(configs[1]).discover();Trust(configs[1]).approve(candidate['fingerprint']);refresh_context(configs[1],servers[1].config.ssl)
                 rb.step();ra.step();rb.step();Reconciler(sb,adapters[1]).step()
                 before=[sorted((p.prefix,p.next_hop,p.communities) for p in ad.paths()) for ad in adapters]
+                page.get_by_role('button',name='Dashboard',exact=True).click()
                 for theme in ('dark','light'):
                     if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme').click()
                     page.evaluate('metrics()');expect(page.locator('#peer-state')).to_have_text('In sync')
+                    expect(page.locator('#review-connection')).to_be_hidden()
+                    expect(page.locator('#peer-tls')).to_have_count(0)
                     page.screenshot(path=str(output/(theme+'-approved.png')),full_page=True)
                 page.set_viewport_size({'width':390,'height':844});page.screenshot(path=str(output/'mobile.png'),full_page=True)
                 assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth'), 'TLS card overflows mobile viewport'
                 page.set_viewport_size({'width':1440,'height':1000})
+                page.get_by_role('button',name='Settings',exact=True).click()
+                for theme in ('dark','light'):
+                    if page.locator('html').get_attribute('data-theme')!=theme:page.locator('#theme').click()
+                    expect(page.locator('#peer-tls')).to_contain_text('SHA256:')
+                    page.screenshot(path=str(output/(theme+'-settings.png')),full_page=True)
+                page.set_viewport_size({'width':390,'height':844});page.screenshot(path=str(output/'mobile-settings.png'),full_page=True)
+                assert page.evaluate('document.documentElement.scrollWidth<=window.innerWidth')
+                page.set_viewport_size({'width':1440,'height':1000})
                 page.locator('#logout').click();login(configs[0],'guest')
+                page.get_by_role('button',name='Settings',exact=True).click()
+                expect(page.locator('#peer-tls')).to_contain_text('SHA256:')
                 expect(page.get_by_role('button',name='Approve peer certificate',exact=True)).to_have_count(0)
                 expect(page.get_by_role('button',name='Revoke peer trust',exact=True)).to_have_count(0)
                 page.locator('#logout').click();login(configs[1],'admin')
+                page.get_by_role('button',name='Settings',exact=True).click()
                 expect(page.get_by_role('button',name='Revoke peer trust',exact=True)).to_be_visible()
                 page.get_by_role('button',name='Revoke peer trust',exact=True).click()
-                expect(page.locator('#peer-state')).to_have_text('Peer approval required')
+                expect(page.locator('#settings-peer-state')).to_have_text('Peer approval required')
                 try:ra.step();raise AssertionError('Revoked peer exchanged data')
                 except TLSFailure:pass
                 sa.add_manual(admin,'198.51.100.7')
@@ -109,7 +128,7 @@ def main():
                 assert [sorted((p.prefix,p.next_hop,p.communities) for p in ad.paths()) for ad in adapters]==before
                 assert not errors,errors
                 browser.close()
-            print('PASS: actual pinned HTTPS/mTLS approval in dark/light/mobile; guest hidden/admin slave approval/revocation; snapshot/journal resume; real peer-free IPv4/IPv6 GoBGP RIB and PIDs unchanged by TLS; no working data/services or real notifications.')
+            print('PASS: Settings-only TLS controls in dark/light/mobile, compact Dashboard with yellow waiting/green sync; guest hidden/admin slave approval/revocation; snapshot/journal resume; real peer-free IPv4/IPv6 GoBGP RIB and PIDs unchanged by TLS; no working data/services or real notifications.')
         finally:
             for server in servers:server.should_exit=True
             for thread in threads:thread.join(15)

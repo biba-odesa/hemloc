@@ -1090,3 +1090,22 @@ retire its old leaf pair after backup, restart only its application and compare/
 approve exact SPKI fingerprints independently on both consoles/web interfaces.
 Removing old CA-mode files without changing mode/paths would prevent HTTPS startup.
 Keep rollback material and verify fresh catch-up/outbox after mutual approval.
+
+
+## 0.5.1 — compact connection status and Peer TLS Settings
+
+Moved certificate details and local trust controls from Dashboard into Settings.
+The Dashboard retains status, last successful sync and lag, with Review connection
+when unhealthy or awaiting approval. Green means In sync, amber means checking,
+catch-up or approval/handshake waiting, red means a confirmed failure. Settings
+retains guest read-only and both-role admin trust controls. No routing, protection,
+replication protocol (3), wire format or persistent TLS identity changes.
+
+Verified: 211 unit tests, 210 passed and one opt-in test skipped; actual Chromium
+dark/light status colors, compact Dashboard, Settings and mobile layout; isolated
+two-node HTTPS/mTLS approval/revocation and snapshot/journal catch-up, guest/admin
+on slave, and real isolated IPv4/IPv6 GoBGP RIB and daemon PIDs unchanged.
+Release 0.5.1 publication and existing-master package update are explicitly
+authorized; preserve all existing local paths, config, keys, trust and data.
+The operator updates the slave separately with update.sh; no new approval or
+configuration change is required for this cosmetic update.

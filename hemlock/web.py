@@ -575,7 +575,7 @@ def create_app(config, *, adapter=None, background=True, observations=None,
         if tls_context:refresh_context(config,tls_context)
         app.state.store.set_local('peer_compatibility',{'ok':False,'code':'peer_approval_required','at':time.time()})
         previous=app.state.store.local('sync',{})
-        app.state.store.set_local('sync',{'ok':False,'at':time.time(),'error':'Waiting for mutually approved peer','last_success':previous.get('last_success')})
+        app.state.store.set_local('sync',{'ok':False,'at':time.time(),'error':'Waiting for mutually approved peer','code':'handshake_required','last_success':previous.get('last_success')})
         return result
 
     @app.post('/api/tls/revoke')

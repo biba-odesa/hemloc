@@ -7,6 +7,9 @@ from .observations import volatile
 from .protocol import confirmed
 from .tls import Trust
 
+PENDING_PEER_STATUSES = frozenset(('Catching up','Checking connection','Handshake required',
+    'Peer approval required','Peer approval required on other node','Not configured'))
+
 
 def paginate(items, number, size):
     if number < 1 or not 1 <= size <= 100:
@@ -118,6 +121,8 @@ class View:
                     'handshake_required':'Handshake required','peer_auth_failed':'Authentication failed'}[sync['code']];lag=None
         elif sync.get('code')=='two_masters':
             status='Conflict: two masters';lag=None
+        elif not peer.get('at') and not sync.get('at') and not worker_failed:
+            status='Checking connection';lag=None
         elif not fresh or not sync.get('ok') or worker_failed:
             status='Unavailable' if not peer.get('at') else 'Stale / unavailable';lag=None
         elif not confirmed(self.service.store,self.now):
@@ -140,7 +145,7 @@ class View:
         if not ready:errors.append('Protection initialization incomplete; new announcements are blocked.')
         errors.extend(v['error'] for v in (self.local.get('protection_schedule') or {}).values() if v.get('error'))
         if self.bgp.get('error'):errors.append(self.bgp['error'])
-        return {'role_transition':self.transition,'peer':{'name':self.config.peer_node_id,'status':status,'healthy':status=='In sync','last_success':success,'lag':lag,'compatibility':self.local.get('peer_compatibility') or {}},
+        return {'role_transition':self.transition,'peer':{'name':self.config.peer_node_id,'status':status,'healthy':status=='In sync','severity':'healthy' if status=='In sync' else 'pending' if status in PENDING_PEER_STATUSES else 'unhealthy','last_success':success,'lag':lag,'compatibility':self.local.get('peer_compatibility') or {}},
                 'blocked':counts(applied) if applied is not None else None,'required':counts(self.routes),
                 'pending':len(pending)+len(withdrawals) if pending is not None else None,'withdrawals':len(withdrawals),'failed':len(failed) if failed is not None else None,
                 'excluded':len({e['prefix'] for e in self.excluded}),

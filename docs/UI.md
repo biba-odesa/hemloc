@@ -12,6 +12,14 @@ way. Not configured, unavailable, stale, catching up and in-sync are distinct.
 Last successful sync is retained separately from failed attempts as local
 telemetry only. It does not change polling, journal application or failover.
 
+Since 0.5.1 the compact Dashboard card shows green for In sync, amber for
+checking/catch-up/approval/handshake waiting, and red for confirmed failures.
+When not healthy, Review connection opens Settings → Peer TLS. Fingerprints,
+certificate dates, node identities, Refresh/Approve/Revoke and the expandable
+local TLS audit live on Settings only. Guests have read-only access; admin
+trust controls remain available on both roles. Settings uses the same status
+classification and refreshes without reopening the Dashboard details.
+
 Blocked IPv4/IPv6/Total count unique desired prefixes actually observed locally
 with the correct Hemlock owner, local origin and expected attributes. Duplicate
 rules/paths do not increase counts. Required counts remain separate. Missing

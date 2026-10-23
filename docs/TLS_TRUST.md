@@ -88,7 +88,8 @@ CLI работает без пользователей и исправной Б�
 TLS state directory (или его подготовленного parent). Созданные файлы не становятся
 root-owned. После CLI approval работающий listener перечитывает доверие в течение
 10 секунд; отдельный restart для approval не нужен. Web approval применяет его
-сразу. Просмотр, Refresh/Approve/Revoke доступны в карточке второго узла;
+сразу. Начиная с 0.5.1 просмотр, Refresh/Approve/Revoke доступны в Settings → Peer TLS;
+на Dashboard остаётся компактный статус и Review connection при проблеме.
 изменения — только admin с CSRF на обеих ролях. Guest видит сведения без кнопок
 и локального TLS-аудита. Остальные master-only ограничения не меняются.
 

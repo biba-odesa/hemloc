@@ -50,3 +50,12 @@ html[data-theme=light] { --sync-good:#126238; --sync-bad:#962633; }
   .counters { flex-wrap: wrap; gap: 16px; }
   .counters strong { font-size: clamp(18px, 5.3vw, 27px); }
 }
+
+/* Connection presentation: waiting/catch-up is distinct from confirmed failure. */
+:root { --sync-pending:#e9c46a; }
+html[data-theme=light] { --sync-pending:#835300; }
+#peer-state.sync-pending,.connection-state.sync-pending { color:var(--sync-pending); }
+.connection-state.sync-healthy { color:var(--sync-good); }
+.connection-state.sync-unhealthy { color:var(--sync-bad); }
+#review-connection { margin-top:8px; }
+#peer-tls { max-width:850px; }

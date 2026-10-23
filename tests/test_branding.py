@@ -34,3 +34,18 @@ class BrandingTests(unittest.TestCase):
             self.assertFalse(View(service,now).dashboard()['peer']['healthy'])
             store.set_local('sync',{'ok':False,'at':now,'code':'two_masters'})
             self.assertFalse(View(service,now).dashboard()['peer']['healthy'])
+
+    def test_peer_severity_distinguishes_waiting_and_confirmed_failures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg=Config(tls=False,database=tmp+'/severity.sqlite',peer_url='https://peer.invalid')
+            store=Store(cfg);service=Service(store);now=time.time()
+            initial=View(service,now).dashboard()['peer']
+            self.assertEqual((initial['status'],initial['severity']),('Checking connection','pending'))
+            codes={'handshake_required':'pending','peer_approval_required':'pending','remote_approval_required':'pending',
+                   'peer_pin_changed':'unhealthy','peer_auth_failed':'unhealthy','protocol_mismatch':'unhealthy','two_masters':'unhealthy'}
+            for code,severity in codes.items():
+                store.set_local('sync',{'ok':False,'at':now,'code':code})
+                peer=View(service,now).dashboard()['peer']
+                self.assertEqual(peer['severity'],severity,code);self.assertFalse(peer['healthy'])
+            store.set_local('sync',{'ok':False,'at':now})
+            self.assertEqual(View(service,now).dashboard()['peer']['severity'],'unhealthy')
