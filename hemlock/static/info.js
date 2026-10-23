@@ -55,7 +55,8 @@ const infoTexts = {
           },
           "Під час повної пересинхронізації стара база резервується, а репліковані дані замінюються актуальними даними нового master. Локальна конфігурація та protection зберігаються. Старі й нові гілки змін автоматично не об’єднуються.",
           "Новий slave можна розгорнути пізніше за інструкцією. Із чинним master потрібно узгодити protected ASN і префікси, накопичений protection cache, параметри IRR, атрибути маршрутів та налаштування авторизації й довіри реплікації. Новий вузол повинен мати власні node ID, локальні адреси та сертифікат із приватним ключем. Правила, користувачі й історія надходять через реплікацію.",
-          "Після зміни ролей старий master не можна просто підключати до мережі: він не знає про нові зміни та може відновити застарілі анонси."
+          "Після зміни ролей старий master не можна просто підключати до мережі: він не знає про нові зміни та може відновити застарілі анонси.",
+          "Кожен вузол має власний TLS-ключ. Реплікація починається після незалежної звірки та підтвердження обох відбитків SHA256 SPKI адміністратором. Новий ключ потребує повторного підтвердження; збережені правила й GoBGP продовжують працювати під час паузи. Довіра локальна й зберігається при синхронізації БД та зміні ролі."
         ]
       ],
       [
@@ -187,7 +188,8 @@ const infoTexts = {
           },
           "During full resynchronization, the old database is backed up and replicated data is replaced with current data from the new master. Local configuration and protection are preserved. Old and new branches of changes are not merged automatically.",
           "A new slave can be deployed later following the instructions. Coordinate protected ASNs and prefixes, the accumulated protection cache, IRR parameters, route attributes, and replication authentication and trust settings with the current master. The new node must have its own node ID, local addresses, and certificate with a private key. Rules, users and history arrive through replication.",
-          "After a role change, do not simply reconnect the old master to the network: it does not know about new changes and may resume stale announcements."
+          "After a role change, do not simply reconnect the old master to the network: it does not know about new changes and may resume stale announcements.",
+          "Each node has its own TLS key. Replication starts only after an administrator compares and approves both SHA256 SPKI fingerprints independently. A changed key needs new approval; saved rules and GoBGP keep working during the pause. Trust is local and survives database synchronization and role changes."
         ]
       ],
       [
@@ -319,7 +321,8 @@ const infoTexts = {
           },
           "При полной пересинхронизации старая база резервируется, а реплицируемые данные заменяются актуальными данными нового master. Локальная конфигурация и protection сохраняются. Старые и новые ветки изменений автоматически не объединяются.",
           "Новый slave можно развернуть позже по инструкции. С действующим master необходимо согласовать protected ASN и префиксы, накопленный protection cache, параметры IRR, атрибуты маршрутов и настройки авторизации и доверия репликации. У нового узла должны быть собственные node ID, локальные адреса и сертификат с приватным ключом. Правила, пользователи и история поступают через репликацию.",
-          "После смены ролей старый master нельзя просто подключать к сети: он не знает о новых изменениях и может восстановить устаревшие анонсы."
+          "После смены ролей старый master нельзя просто подключать к сети: он не знает о новых изменениях и может восстановить устаревшие анонсы.",
+          "У каждого узла собственный TLS-ключ. Репликация начинается после независимой сверки и подтверждения обоих отпечатков SHA256 SPKI администратором. Новый ключ требует повторного подтверждения; сохранённые правила и GoBGP продолжают работать во время паузы. Доверие локальное и сохраняется при синхронизации БД и смене роли."
         ]
       ],
       [

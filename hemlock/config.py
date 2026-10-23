@@ -20,6 +20,11 @@ class Config:
     cert: str = ""
     key: str = ""
     ca: str = ""
+    tls_mode: str = "legacy_ca"
+    tls_state_dir: str = ""
+    tls_names: tuple = ()
+    tls_days: int = 365
+    tls_warn_days: int = 30
     peer_url: str = ""
     peer_node_id: str = "block-b"
     token_file: str = ""
@@ -106,6 +111,19 @@ class Config:
             url = urlsplit(self.peer_url)
             if url.scheme != "https" or not url.hostname or url.username or url.password or url.query or url.fragment:
                 raise Invalid("Replication requires a credential-free HTTPS URL")
+        if self.tls_mode not in ('legacy_ca','pinned'):
+            raise Invalid('TLS mode must be legacy_ca or pinned')
+        if self.tls_mode=='pinned':
+            if not all(re.fullmatch(r'[A-Za-z0-9_.-]{1,64}',v) for v in (self.node_id,self.peer_node_id)):raise Invalid('Pinned TLS requires a bounded node ID')
+            if self.peer_url and urlsplit(self.peer_url).path not in ('','/'):raise Invalid('Pinned peer_url must not contain a path prefix')
+            if not self.tls or not self.tls_state_dir or not Path(self.tls_state_dir).is_absolute():
+                raise Invalid('Pinned TLS requires HTTPS and an absolute tls state_dir')
+            if not 1<=self.tls_days<=825 or not 1<=self.tls_warn_days<=90:
+                raise Invalid('TLS days must be 1..825; warn_days 1..90')
+            if not self.cert or not self.key or Path(self.cert).parent!=Path(self.key).parent or self.cert==self.key:
+                raise Invalid('Pinned certificate/key require a dedicated shared identity directory')
+            if Path(self.cert).parent.parent!=Path(self.tls_state_dir):
+                raise Invalid('Certificate/key need a dedicated identity directory directly under tls state_dir')
         if self.tls and (not self.cert or not self.key):
             raise Invalid("HTTPS requires certificate and key; choose HTTP explicitly for bootstrap")
         if self.grpc_target.rsplit(":", 1)[0] not in ("127.0.0.1", "localhost", "[::1]"):
@@ -131,6 +149,7 @@ def load(path: str) -> Config:
     if not ini.read(path):
         raise Invalid(f"Cannot read config: {path}")
     mapping = {
+        "tls": ("tls_mode", "tls_state_dir", "tls_names", "tls_days", "tls_warn_days"),
         "retention": ("retention_enabled", "blocklist_days", "users_access_days", "errors_security_days", "cleanup_time", "retention_timezone", "retention_batch_size"),
         "notifications": ("notifications_enabled", "notification_script", "notification_timeout_seconds", "notification_blocklist_changes", "notification_login_blocked", "notification_suspicious_access", "notification_queue_size", "notification_workers", "suspicious_threshold", "suspicious_window_seconds", "suspicious_cooldown_seconds"),
         "node": ("node_id", "role", "database", "peer_url", "peer_node_id", "token_file", "poll_seconds"),
@@ -146,7 +165,7 @@ def load(path: str) -> Config:
         if not ini.has_section(section):
             continue
         for name in fields:
-            key = {"http_proxy": "http", "https_proxy": "https", "retention_enabled": "enabled", "retention_timezone": "timezone", "retention_batch_size": "batch_size", "notifications_enabled": "enabled"}.get(name, name)
+            key = name.removeprefix("tls_") if section=="tls" else {"http_proxy": "http", "https_proxy": "https", "retention_enabled": "enabled", "retention_timezone": "timezone", "retention_batch_size": "batch_size", "notifications_enabled": "enabled"}.get(name, name)
             if section == "notifications" and name.startswith("notification_"):
                 key = name.removeprefix("notification_")
             if not ini.has_option(section, key):
@@ -164,7 +183,7 @@ def load(path: str) -> Config:
                 values[name] = tuple(int(v) for v in items) if name in ("owner", "protected_asns") else items
             else:
                 values[name] = raw
-    for name in ("database", "token_file", "cert", "key", "ca"):
+    for name in ("database", "token_file", "cert", "key", "ca", "tls_state_dir"):
         if values.get(name) and not Path(values[name]).is_absolute():
             values[name] = str((Path(path).resolve().parent / values[name]).resolve())
     for section, targets in {

@@ -38,3 +38,15 @@ html[data-theme=light] { --sync-good:#126238; --sync-bad:#962633; }
 #peer-state.sync-unhealthy { color:var(--sync-bad); }
 
 .app-version{color:var(--muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+
+/* Public certificate details stay compact in the peer card on both themes. */
+#peer-tls { margin-top: .8rem; font-size: .85rem; }
+#peer-tls dd { overflow-wrap: anywhere; }
+#peer-tls button { margin: .3rem .3rem .3rem 0; }
+.metrics article, #peer-tls { min-width: 0; }
+#peer-tls .field-grid { grid-template-columns: minmax(0, 1fr); }
+@media(max-width:650px) {
+  .metrics { grid-template-columns: minmax(0, 1fr); }
+  .counters { flex-wrap: wrap; gap: 16px; }
+  .counters strong { font-size: clamp(18px, 5.3vw, 27px); }
+}

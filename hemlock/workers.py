@@ -9,6 +9,7 @@ from pathlib import Path
 import time
 
 from .domain import Conflict
+from .tls import TLSFailure
 from .irr import IRR, Metadata, failure_details
 from .service import SYSTEM
 from .store import digest
@@ -99,6 +100,14 @@ async def repeat(stop, function, interval, store, label):
     while not stop.is_set():
         try:
             await asyncio.to_thread(function)
+        except TLSFailure as exc:
+            previous=store.local('worker:'+label,{})
+            success=store.local('sync',{}).get('last_success') or 0
+            # Pending local trust is a state, not a new unauthorized HTTP action per poll.
+            if previous.get('code')!=exc.code or success>previous.get('at',0):
+                store.security_event('system:worker','system.error','system','failed')
+                logging.getLogger('uvicorn.error.tls').warning('Peer TLS state code=%s',exc.code)
+            store.set_local('worker:'+label,{'at':time.time(),'code':exc.code,'error':str(exc)})
         except Exception:
             store.security_event('system:worker', 'system.error', 'system', 'failed')
             store.set_local('worker:' + label, {'at': time.time(), 'error': 'Background operation failed; previous state retained'})

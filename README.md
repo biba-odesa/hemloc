@@ -11,6 +11,8 @@ proxy, external database or task queue is required.
   and explicit approval for empty or anomalous changes.
 - IPv4/IPv6 manual rules, canonical validation, transactional duplicate guards,
   overlapping independent reasons and protection-aware coverage badges.
+- Node-owned TLS certificates with explicit mutual SHA256 SPKI approval;
+  local trust survives database snapshots and role changes.
 - Master/slave snapshots and journal replication over authenticated verified
   HTTPS, with manual promotion and no automatic branch merge.
 - Local protection, owned-route gRPC reconciliation and safe disabled-announcement
@@ -69,6 +71,7 @@ build results are recorded in [VALIDATION.md](docs/VALIDATION.md), with limits i
 
 - [TLS, backup/restore, failover and owned-route withdrawal](docs/OPERATIONS.md)
 - [Replication compatibility and upgrade order](docs/REPLICATION_PROTOCOL.md)
+- [TLS fingerprints, approval and CA migration](docs/TLS_TRUST.md)
 - [Audit retention and external notifications](docs/AUDIT_RETENTION.md)
 - [Batch input and limits](docs/BATCH_INPUT.md)
 

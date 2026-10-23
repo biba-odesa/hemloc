@@ -5,6 +5,7 @@ import time
 from .domain import Invalid, desired, prefix
 from .observations import volatile
 from .protocol import confirmed
+from .tls import Trust
 
 
 def paginate(items, number, size):
@@ -97,8 +98,21 @@ class View:
         failure=self.local.get('worker:replication') or {}
         worker_failed=bool(failure.get('error')) and failure.get('at',0)>sync.get('at',0)
         success=sync.get('last_success') or (sync.get('at') if sync.get('ok') else None)
+        tls_local='legacy'
+        if self.config.tls_mode=='pinned':
+            try:tls_local='approved' if Trust(self.config).pin() else 'pending'
+            except (ValueError,OSError):tls_local='invalid'
         if not self.config.peer_url:
             status='Not configured';lag=None
+        elif tls_local=='invalid':
+            status='Local TLS state error';lag=None
+        elif tls_local=='pending':
+            status='Peer approval required';lag=None
+        elif sync.get('code') in ('peer_approval_required','remote_approval_required','peer_pin_changed','peer_identity_mismatch','tls_certificate_invalid','tls_introduction_failed','tls_redirect'):
+            status={'peer_approval_required':'Peer approval required','remote_approval_required':'Peer approval required on other node',
+                    'peer_pin_changed':'Peer certificate changed','peer_identity_mismatch':'Peer identity mismatch',
+                    'tls_certificate_invalid':'Peer certificate invalid','tls_introduction_failed':'Peer introduction failed',
+                    'tls_redirect':'Peer redirect rejected'}[sync['code']];lag=None
         elif sync.get('code') in ('protocol_mismatch','peer_upgrade_required','handshake_required','peer_auth_failed'):
             status={'protocol_mismatch':'Protocol version mismatch','peer_upgrade_required':'Peer upgrade required',
                     'handshake_required':'Handshake required','peer_auth_failed':'Authentication failed'}[sync['code']];lag=None

@@ -1,6 +1,6 @@
 # Установка master Hemlock на чистую Debian 13
 
-Документ относится к канонической поставке **0.4.0 и новее**. Стандарт:
+Документ относится к канонической поставке **0.5.0 и новее**. Стандарт:
 `/opt/hemlock` (код и venv), `/etc/hemlock`, `/var/lib/hemlock`, пользователь и
 группа `hemlock`, `hemlock.service`, CLI/Python package `hemlock`.
 GoBGP — отдельные `gobgp.service`, пользователь `gobgp`, локальный gRPC.
@@ -52,7 +52,7 @@ Git устанавливается **до** первого clone:
 ```bash
 apt-get update
 apt-get install -y --no-install-recommends git ca-certificates nano
-RELEASE='<PUBLISHED_0.4_OR_LATER_TAG_OR_FULL_40_HEX_COMMIT>'
+RELEASE='<PUBLISHED_0.5_OR_LATER_TAG_OR_FULL_40_HEX_COMMIT>'
 git clone https://github.com/biba-odesa/hemlock.git /root/hemlock-source
 cd /root/hemlock-source
 git fetch origin "$RELEASE"
@@ -61,9 +61,9 @@ git checkout --detach "$COMMIT"
 printf 'Selected commit: %s\n' "$COMMIT"
 ```
 
-Сверьте COMMIT с публикацией по независимому каналу. Пока тег 0.4.0 не выпущен,
-используйте опубликованный **полный commit**, содержащий установщик. Старый
-v0.3.0 не содержит канонической поставки; существующие теги не перемещаются.
+Сверьте COMMIT с публикацией по независимому каналу. Выберите опубликованный
+тег/полный commit **0.5.0+**, содержащий новый TLS flow. Если тег ещё не создан,
+используйте опубликованный полный commit. Старые теги не перемещаются.
 
 Установщик сам скачивает GoBGP **4.10.0** и Go **1.25.14 linux-amd64**,
 проверяет фиксированные SHA256 архивов до распаковки, применяет TTL patch и
@@ -105,46 +105,24 @@ bash deploy/install-debian13.sh \
 Код/venv root-owned и недоступны сервисному пользователю на запись.
 При ошибке останется частичная установка: не стирайте её вслепую для повторения.
 
-## 4. TLS: собственный CA и IP SAN
+## 4. Собственный сертификат без CA
 
-CA private key остаётся только на master либо выбранной офлайн CA-машине.
-Для этой инструкции подпись обоих сертификатов выполняется на master.
-Если CA уже существует, используйте его, не создавайте другой с тем же именем.
+В новой установке `[tls] mode = pinned`. CA/CSR не нужны: при первом старте
+непривилегированный Hemlock создаёт собственную пару в отдельном каталоге
+`/var/lib/hemlock/tls/identity`. Установщик уже создал родительский state directory
+hemlock:hemlock 0700. Key/cert будут 0600; не создавайте один файл без другого.
 
-```bash
-umask 077
-install -d -m 0700 /root/hemlock-ca
-openssl req -x509 -newkey rsa:4096 -nodes -days 3650 \
-  -keyout /root/hemlock-ca/ca.key -out /root/hemlock-ca/ca.crt \
-  -subj '/CN=Hemlock private CA' \
-  -addext 'basicConstraints=critical,CA:TRUE' \
-  -addext 'keyUsage=critical,keyCertSign,cRLSign'
-NODE_IP=192.0.2.10
-openssl req -new -newkey rsa:3072 -nodes \
-  -keyout /etc/hemlock/tls/server.key -out /root/hemlock-ca/master.csr \
-  -subj '/CN=block-a' -addext "subjectAltName=IP:$NODE_IP"
-test -s /root/hemlock-ca/master.csr
-openssl req -in /root/hemlock-ca/master.csr -noout -verify
-printf 'subjectAltName=IP:%s\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n' \
-  "$NODE_IP" > /root/hemlock-ca/master.ext
-openssl x509 -req -in /root/hemlock-ca/master.csr \
-  -CA /root/hemlock-ca/ca.crt -CAkey /root/hemlock-ca/ca.key -CAcreateserial \
-  -days 365 -sha256 -extfile /root/hemlock-ca/master.ext \
-  -out /etc/hemlock/tls/server.crt
-install -o root -g hemlock -m 0640 /root/hemlock-ca/ca.crt /etc/hemlock/tls/ca.crt
-chown root:hemlock /etc/hemlock/tls/server.key /etc/hemlock/tls/server.crt
-chmod 0640 /etc/hemlock/tls/server.key /etc/hemlock/tls/server.crt
-openssl verify -CAfile /etc/hemlock/tls/ca.crt /etc/hemlock/tls/server.crt
-openssl x509 -in /etc/hemlock/tls/server.crt -noout -checkip "$NODE_IP"
-openssl x509 -in /etc/hemlock/tls/server.crt -pubkey -noout | openssl pkey -pubin -outform DER | sha256sum
-openssl pkey -in /etc/hemlock/tls/server.key -pubout -outform DER | sha256sum
-```
+Выберите management IP/DNS и задайте его в web.host и tls.names (SAN).
+Для wildcard listener `0.0.0.0`/`::` names обязательны. Стандартные пути:
+cert=/var/lib/hemlock/tls/identity/server.crt, key=.../server.key.
+Не копируйте чужие keys/CA key. При повреждении/неверных правах приложение
+откажется запускаться, не заменяя файлы. Срок 365 дней, предупреждение за 30 дней;
+авторотация при истечении кратко перезапускает только HTTPS и требует approval
+нового ключа на другом узле. GoBGP не перезапускается.
 
-Последние два digest должны совпасть; приватный ключ в терминал не выводится.
-Для DNS-имён добавьте DNS SAN при подписи. Импортируйте **публичный** CA в доверие
-рабочей станции/браузера после проверки fingerprint; `verify=False` и `curl -k`
-не используются. Продление через год: новый CSR и сертификат с теми же SAN,
-проверки CA/key/SAN и перезапуск только Hemlock; ключ CA не переносится на slave.
+Старый CA-режим сохраняется только при явном `mode = legacy_ca` (старый INI без
+TLS section также legacy). Для действующей пары сначала обновите B → A в legacy,
+затем отдельно переключите оба в pinned; подробности [TLS_TRUST.md](TLS_TRUST.md).
 
 ## 5. Секрет, INI и GoBGP
 
@@ -171,9 +149,16 @@ token_file = /etc/hemlock/replication.token
 host = 192.0.2.10
 port = 8443
 tls = yes
-cert = /etc/hemlock/tls/server.crt
-key = /etc/hemlock/tls/server.key
-ca = /etc/hemlock/tls/ca.crt
+cert = /var/lib/hemlock/tls/identity/server.crt
+key = /var/lib/hemlock/tls/identity/server.key
+ca =
+
+[tls]
+mode = pinned
+state_dir = /var/lib/hemlock/tls
+names = 192.0.2.10
+days = 365
+warn_days = 30
 
 [gobgp]
 announcements = no
@@ -241,7 +226,8 @@ GoBGP инициализируется один раз; при изменени�
 Проверка HTTPS без отключения доверия:
 
 ```bash
-curl --noproxy '*' --cacert /etc/hemlock/tls/ca.crt \
+NODE_IP='<YOUR_MANAGEMENT_IP>'
+curl --noproxy '*' --cacert /var/lib/hemlock/tls/identity/server.crt \
   "https://$NODE_IP:8443/api/session"
 ```
 
@@ -254,10 +240,23 @@ curl --noproxy '*' --cacert /etc/hemlock/tls/ca.crt \
 ## 7. Подключение slave и эксплуатация
 
 [INSTALL_B.md](INSTALL_B.md) — самостоятельная последовательность подготовки
-slave с CSR, безопасным переносом секрета и protection, snapshot/journal.
-На master после подготовки slave задайте его `peer_url`, `peer_node_id`, CA/secret,
+slave с собственным ключом, безопасным переносом секрета, protection и snapshot/journal.
+На master после подготовки slave задайте его `peer_url`, `peer_node_id` и общий secret,
 проверьте права INI и перезапустите **только Hemlock** для перечитывания.
-Одинаковый общий secret и взаимное доверие сертификатам обязательны. Node IDs
+После старта обоих выполнить на КАЖДОМ узле:
+
+```bash
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls self
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls peer
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls approve \
+  --fingerprint 'SHA256:<VERIFIED_OTHER_NODE_SPKI>'
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls trust
+```
+
+Сверять candidate с консольным `tls self` ДРУГОГО сервера, не с тем же ответом
+по сети. До взаимного approval данных/token нет. Пустой slave после approval
+получает snapshot, прежний догоняет journal. CLI не требует пользователей/БД.
+Одинаковый общий secret и независимое approval обоих ключей обязательны. Node IDs
 и route owner узлов различаются. У пользователей на slave нет записи.
 
 Обновление, rollback и ручная смена ролей: [LIFECYCLE.md](LIFECYCLE.md).

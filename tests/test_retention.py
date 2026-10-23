@@ -241,7 +241,7 @@ class RetentionTests(unittest.TestCase):
         self.assertTrue(export(self.a,dest)['written']);self.assertEqual(dest.stat().st_mode & 0o777,0o600)
         with self.assertRaises(FileExistsError):export(self.a,dest)
         plan=Path(self.tmp.name)/'plan.json';write_private(plan,preview(self.a,NOW));self.assertEqual(plan.stat().st_mode & 0o777,0o600)
-        example=Path(self.tmp.name)/'example.ini';example.write_text(Path('deploy/hemlock.example.ini').read_text().replace('tls = yes','tls = no'))
+        example=Path(self.tmp.name)/'example.ini';example.write_text(Path('deploy/hemlock.example.ini').read_text().replace('tls = yes','tls = no').replace('mode = pinned','mode = legacy_ca'))
         cfg=load(str(example));self.assertFalse(cfg.retention_enabled);self.assertFalse(cfg.notifications_enabled)
         for change in ({'blocklist_days':0},{'cleanup_time':'25:00'},{'retention_timezone':'Nowhere/Invalid'},{'notification_workers':100}):
             with self.assertRaises(Invalid):replace(self.cfg,**change).validate()

@@ -11,6 +11,7 @@ from urllib.request import ProxyHandler, HTTPSHandler, HTTPRedirectHandler, Requ
 import json
 
 from .domain import Conflict, Invalid, NeedSnapshot, SplitBrain
+from .tls import TLSFailure
 from .installed import application_identity
 from .protocol import (REPLICATION_PROTOCOL_VERSION, NODE_HEADER, VERSION_HEADER, EXCHANGE_HEADER,
                        APP_HEADER, ProtocolFailure, app_version, parse_version, failure)
@@ -40,8 +41,12 @@ class PeerTransport:
         self.token = Path(config.token_file).read_text().strip() if config.token_file else ""
         if config.peer_url and (len(self.token) < 32 or any(c.isspace() for c in self.token)):
             raise Invalid("Replication token must contain at least 32 non-whitespace characters")
-        context = ssl.create_default_context(cafile=config.ca or None)
-        self.opener = build_opener(ProxyHandler({}), HTTPSHandler(context=context), NoRedirect())
+        if config.tls_mode=='pinned':
+            from .tls import PinnedOpener
+            self.opener=PinnedOpener(config)
+        else:
+            context = ssl.create_default_context(cafile=config.ca or None)
+            self.opener = build_opener(ProxyHandler({}), HTTPSHandler(context=context), NoRedirect())
 
     def authorized(self, authorization, peer_id):
         return bool(self.token and peer_id == self.config.peer_node_id and
@@ -136,10 +141,16 @@ def observe_peer(store, transport, *, persist_ack=True):
         raise Conflict('Invalid peer role')
     now = time.time()
     store.set_local('peer', {'at': now, 'status': peer})
+    tls_proof={}
+    if config.tls_mode=='pinned':
+        from .tls import Trust,own_info
+        pin=Trust(config).pin()
+        if not pin:raise TLSFailure('peer_approval_required','Peer approval required')
+        tls_proof={'peer_spki':pin['fingerprint'],'own_spki':own_info(config)['fingerprint']}
     store.set_local('peer_compatibility',{'ok':True,'at':now,'local_protocol_version':getattr(transport,'protocol_version',REPLICATION_PROTOCOL_VERSION),
                                         'peer_protocol_version':negotiated['replication_protocol_version'],
                                         'local_application_version':getattr(transport,'application_version',None),
-                                        'peer_application_version':negotiated.get('application_version')})
+                                        'peer_application_version':negotiated.get('application_version'),**tls_proof})
     if persist_ack:commit_peer_ack(store,peer)
     return peer
 
@@ -186,6 +197,12 @@ class Replicator:
                 if peer.get('security_ack'):self.store.set_local('security_ack',peer['security_ack'])
             commit_peer_ack(self.store,peer)
             self.store.set_local("sync", {"ok": True, "at": time.time(), "last_success": time.time(), "error": ""})
+        except TLSFailure as exc:
+            previous=self.store.local('sync',{})
+            self.store.set_local('peer_compatibility',{'ok':False,'at':time.time(),'code':exc.code})
+            self.store.set_local('sync',{'ok':False,'at':time.time(),'code':exc.code,'error':str(exc),
+                                        'last_success':previous.get('last_success') or (previous.get('at') if previous.get('ok') else None)})
+            raise
         except ProtocolFailure as exc:
             failure(self.store,exc)
             raise

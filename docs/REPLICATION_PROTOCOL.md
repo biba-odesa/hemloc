@@ -9,8 +9,8 @@ snapshot/journal, security outbox или других сообщений. Пар
 
 ## Проверка перед обменом
 
-Каждый цикл начинается с небольшого `/replication/handshake`: TLS проверяет CA
-и имя/SAN, Bearer проверяет общий секрет, `X-Hemlock-Node` — ожидаемый node ID.
+Каждый цикл начинается с небольшого `/replication/handshake`: TLS проверяет CA и имя/SAN в legacy_ca либо approved SPKI/mTLS
+в pinned mode (0.5.0+); Bearer проверяет общий секрет, `X-Hemlock-Node` — ожидаемый node ID.
 Название заголовка идентичности закреплено и не зависит от будущего имени продукта.
 `X-Hemlock-Protocol` сообщает версию протокола, `X-Hemlock-App-Version` —
 версию установленного приложения для диагностики. Handshake ограничен 16 KiB.
@@ -74,3 +74,5 @@ backup или export и не гарантирует уменьшения раз�
 выбранный оператором сценарий смены размещения/путей, а не требование протокола.
 Историческое переименование HTTP-заголовка было излишним разрывом совместимости;
 переименование продукта само по себе не требует изменения протокола.
+
+TLS model in 0.5.0 does not change protocol 3 or snapshot/journal/outbox formats. Public certificate introduction and local approval are separate from the authenticated protocol handshake; see [TLS_TRUST.md](TLS_TRUST.md).

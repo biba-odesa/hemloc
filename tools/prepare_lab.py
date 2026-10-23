@@ -44,6 +44,7 @@ def main():
         ini['node'].update(node_id=f'block-{label}', role=role, database=str(directory/f'{label}.sqlite'),
                            peer_node_id=f'block-{peer}', peer_url=f'https://127.0.0.1:{peer_port}',
                            token_file=str(directory/'peer.token'), poll_seconds='0.2')
+        ini['tls']['mode']='legacy_ca'
         ini['web'].update(host='127.0.0.1', port=str(port), tls='yes', cert=cert, key=key, ca=str(directory/'ca.crt'))
         ini['gobgp'].update(announcements='no', owner=f'64512,100,{1 if label == "a" else 2}')
         ini['protection']['protected_asns'] = ''

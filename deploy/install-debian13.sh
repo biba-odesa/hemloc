@@ -104,13 +104,13 @@ COMMIT=$(git -C /opt/hemlock rev-parse --verify 'FETCH_HEAD^{commit}')
 [[ -z $EXPECTED || $COMMIT == "$EXPECTED" ]] || fail 'Release commit does not match --expected-commit'
 [[ $RELEASE_REF == v* || $COMMIT == "$RELEASE_REF" ]] || fail 'Fetched commit mismatch'
 git -C /opt/hemlock checkout --detach "$COMMIT"
-[[ -f /opt/hemlock/deploy/install-debian13.sh ]] || fail 'This release predates canonical fresh installation support; select 0.4.0 or later'
+[[ -f /opt/hemlock/deploy/install-debian13.sh ]] || fail 'This release predates canonical fresh installation support; select 0.5.0 or later'
 python3.13 - <<'PY'
 from pathlib import Path
 import tomllib
 root=Path('/opt/hemlock')
 project=tomllib.loads((root/'pyproject.toml').read_text())['project']
-assert project['name']=='hemlock' and tuple(map(int,project['version'].split('.'))) >= (0,4,0), 'Canonical release 0.4.0 or later required'
+assert project['name']=='hemlock' and tuple(map(int,project['version'].split('.'))) >= (0,5,0), 'Node-owned TLS installer requires release 0.5.0 or later'
 assert 'User=hemlock\n' in (root/'deploy/hemlock.service').read_text()
 PY
 if [[ -z $BINARY ]]; then
@@ -135,7 +135,7 @@ fi
 useradd --system --user-group --home-dir /var/lib/hemlock --no-create-home --shell /usr/sbin/nologin hemlock
 useradd --system --user-group --no-create-home --shell /usr/sbin/nologin gobgp
 install -d -o root -g hemlock -m 0750 /etc/hemlock /etc/hemlock/tls
-install -d -o hemlock -g hemlock -m 0700 /var/lib/hemlock
+install -d -o hemlock -g hemlock -m 0700 /var/lib/hemlock /var/lib/hemlock/tls
 install -d -o root -g gobgp -m 0750 /etc/gobgp
 install -o root -g hemlock -m 0640 /opt/hemlock/deploy/hemlock.example.ini /etc/hemlock/hemlock.ini
 ROLE="$ROLE" NODE_ID="$NODE_ID" PEER_ID="$PEER_ID" OWNER="$OWNER" python3.13 - <<'PY'
@@ -169,14 +169,16 @@ fi
 printf '\nInstalled commit: %s\nNo services enabled or started. No DB or administrator created.\n' "$COMMIT"
 cat <<'NEXT'
 Next, as root (see /opt/hemlock/docs/DEPLOYMENT.md for full TLS/replication steps):
-1. Prepare /etc/hemlock/tls/{server.crt,server.key,ca.crt} and replication secret.
-2. Edit /etc/hemlock/hemlock.ini: HTTPS, peer identity/URL, protection, operator-approved route attributes. Keep announcements=no.
+1. Prepare the replication secret and configured management SANs. Default pinned TLS creates its own pair under /var/lib/hemlock/tls/identity; no CA required.
+2. Edit /etc/hemlock/hemlock.ini: HTTPS/SANs, peer identity/URL, protection, approved route attributes. Keep announcements=no. Do not place keys in /etc for default pinned mode.
 3. Prepare /etc/gobgp/gobgpd.toml from the example using approved addresses/ASN. All real peers remain administratively disabled; import/export reject by default.
 4. Recheck INI root:hemlock 0640 and readability as hemlock after editing.
 5. Validate config: runuser -u hemlock -- /opt/hemlock/.venv/bin/python -c 'from hemlock.config import load; load("/etc/hemlock/hemlock.ini"); print("Config OK")'
 6. Initialize: /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini init-db
 7. Set DB ownership: chown -R hemlock:hemlock /var/lib/hemlock
 8. MASTER ONLY: /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini user create LOGIN --role admin
-9. After TLS/config/protection review: systemctl enable --now gobgp.service hemlock.service
+9. After config/protection review: systemctl enable --now gobgp.service hemlock.service
+10. On EACH console: /opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls self
+11. Then tls peer, independently compare the OTHER console fingerprint, and tls approve --fingerprint SHA256:... using the same full CLI path. Until mutual approval replication stays paused.
 SLAVE: never create an administrator; users/rules/audit arrive by snapshot/journal.
 NEXT

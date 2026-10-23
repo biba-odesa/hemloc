@@ -16,6 +16,7 @@ Development target: Debian 13, CPython 3.13, system SQLite (3.46.1). Runtime req
 | HTTPX | 0.28.1 | Optional ASGI/integration tests only |
 | setuptools | 80.9.0 | Package building |
 | GoBGP | **4.10.0 only** | Separate gobgpd service, `/api.GoBgpService/*` |
+| cryptography | **50.0.2** | X.509, SPKI SHA256 and ECDSA certificates; Python 3.13 wheels |
 | bgpq4 | **1.12-1**, Debian 13 package | IRR WHOIS prefix expansion |
 
 No production compatibility with GoBGP 3.x is claimed. API enum numbering and service names changed in v4. The adapter defines a minimal protobuf **projection** of the 4.10.0 schema, uses protobuf-native parsing/serialization (not a handwritten protobuf codec), and requests binary NLRI/path attributes. Binary BGP unicast attribute generation/parsing is owned by Hemlock and tested separately. Unknown protobuf fields remain private and are never serialized into observation/audit; peer auth_password fields are not projected. Static source review confirmed Family AFI/SAFI values and binary-path fallback against the pinned common.proto/pkg/apiutil/util.go. Verified against compiled official descriptors: 16 projected messages, 39 fields and four RPC signatures. Real 4.10.0 add/list/delete, IPv6 MP_REACH, attributes, same-NLRI ownership isolation and daemon recovery tests pass. ListPeer and nonempty Adj-RIB-Out were additionally checked with an isolated IPv4-transport iBGP session carrying IPv4 and IPv6 routes; receiver attributes/export, withdrawal and peer restart passed. Exact TableLookupPrefix queries avoid a full RIB scan before each write. Pinning the service name makes a v3 daemon fail rather than use a mismatched API.
@@ -59,3 +60,5 @@ fails authentication; coordinate both-node migration using MIGRATION_LEGACY.md.
 No stored identity, route-owner, journal schema or audit-prune-v2 change is made.
 Existing release tags are immutable. The installer requires a fixed 0.4.0+ source
 commit/tag, verified patched binary/checksum, and never starts incomplete nodes.
+
+TLS trust in 0.5.0 is local and independent of replication protocol 3. PyCA package metadata: https://pypi.org/project/cryptography/50.0.2/. TLS/transport is provided by Python ssl/OpenSSL and the pinned Uvicorn 0.42.0 HTTP/1.1 adapter, with actual client DER placed in ASGI scope by the transport, never trusted from headers.

@@ -10,6 +10,7 @@ from .auth import password_hash, PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH
 from .config import load
 from .domain import Actor, Invalid
 from .protocol import ProtocolFailure
+from .tls import TLSFailure
 from .service import Service
 from .store import Store, encode
 from .workers import process_lock
@@ -31,6 +32,14 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     sub.add_parser('serve')
     sub.add_parser('init-db')
+    recovery=sub.add_parser('database')
+    recovery_sub=recovery.add_subparsers(dest='operation',required=True)
+    command=recovery_sub.add_parser('reinitialize');command.add_argument('--execute',action='store_true')
+    tls=sub.add_parser('tls')
+    tls_sub=tls.add_subparsers(dest='operation',required=True)
+    for name in ('self','peer','trust'):tls_sub.add_parser(name)
+    for name in ('approve','revoke'):
+        command=tls_sub.add_parser(name);command.add_argument('--fingerprint',required=True)
     sub.add_parser('desired')
     transition = sub.add_parser('transition')
     transitions = transition.add_subparsers(dest='operation', required=True)
@@ -65,9 +74,33 @@ def main(argv=None):
     store = None
     try:
         config = load(args.config)
+        if args.command=='database':
+            if os.geteuid()!=0:raise Invalid('Database recovery requires root')
+            owner=Path(config.database).parent.stat()
+            if owner.st_uid!=0:os.setgroups([]);os.setgid(owner.st_gid);os.setuid(owner.st_uid)
+            from .recovery import reinitialize
+            print(encode(reinitialize(config,args.execute)));return 0
+        if args.command=='tls':
+            if os.geteuid()!=0:raise Invalid('TLS maintenance requires root')
+            if config.tls_mode!='pinned':raise Invalid('TLS approval commands require explicit pinned mode')
+            directory=Path(config.tls_state_dir)
+            owner=(directory if directory.exists() else directory.parent).stat()
+            if owner.st_uid!=0:
+                os.setgroups([]);os.setgid(owner.st_gid);os.setuid(owner.st_uid)
+            from .tls import Trust,ensure_identity,own_info
+            trust=Trust(config)
+            if args.operation=='self':ensure_identity(config,rotate_expired=False);result=own_info(config)
+            elif args.operation=='peer':result=trust.discover()
+            elif args.operation=='trust':result=trust.status()
+            elif args.operation=='approve':result=trust.approve(args.fingerprint)
+            else:result=trust.revoke(args.fingerprint)
+            print(encode(result));return 0
         if args.command == 'serve':
             if os.geteuid() == 0:
                 raise Invalid('Run the application as an unprivileged service user')
+            if config.tls_mode=='pinned':
+                from .tls_runtime import serve
+                serve(config);return 0
             import uvicorn
             from .web import create_app
             uvicorn.run(create_app(config), host=config.host, port=config.port, workers=1,
@@ -167,7 +200,8 @@ def main(argv=None):
         if store is not None and args.command == 'audit' and args.operation == 'prune' and args.execute:
             from .audit import failure_result
             store.security_event('root:cli', 'audit.prune', 'maintenance', failure_result(exc))
-        message = str(exc) if isinstance(exc, (Invalid, PermissionError, ProtocolFailure)) else 'Operation failed; check configuration and local service health'
+        message = str(exc) if isinstance(exc, (Invalid, PermissionError, ProtocolFailure, TLSFailure)) else 'Operation failed; check configuration and local service health'
+        if args.command in ('tls','database') and isinstance(exc,RuntimeError):message=str(exc)
         if isinstance(exc, ImportError):
             message = 'Project dependencies are missing; install them in the virtual environment'
         print(f'Hemlock: {message}', file=sys.stderr)

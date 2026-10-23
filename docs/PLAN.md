@@ -963,3 +963,100 @@ set of operational links; moved licensing back to the end. Detailed legacy
 migration/reference documents and all published tags/history remain intact.
 Checked README relative links and Git diff; no runtime tests needed for text-only
 changes. No production operation.
+
+## Node-owned TLS / release 0.5.0, protocol stays 3
+
+Implemented explicit pinned mode alongside explicit legacy_ca migration mode
+(default for existing INI without TLS section). Node-owned P-256 certificate/key
+publication uses a private atomic identity directory; strict service ownership,
+permissions, pair matching/format validation; startup/runtime expiration rotates
+only after graceful HTTPS stop. The embedded launcher restarts HTTPS internally,
+never GoBGP/systemd. Warn-once expiry and one-attempt rotation notifications use
+the existing bounded handler; old notification events are not replayed.
+
+Local atomic/locked trust and detailed TLS audit stay outside SQLite and all
+replication payloads. Public bounded introduction precedes any credentials.
+Actual peer data socket checks approved SHA256 SPKI before Authorization; mTLS
+client DER comes from the Uvicorn HTTP/1.1 transport, never headers. Browser login
+needs no client certificate. Existing token/node/protocol handshake still gates
+all data endpoints. TLS failures never change role/DB/protection/routes. Readiness
+for retention also requires current local pins. No new audit action is sent to
+old protocol-3 peers; detailed TLS approval audit is strictly local.
+
+Root tls self/peer/approve/trust/revoke bypass DB access and drop to the prepared
+TLS directory owner. Admin web approval/revocation works on both roles with CSRF;
+guest cannot mutate/read local TLS audit. Candidate refresh/race checking and
+explicit revoke-before-replacement prevent silent re-pinning. Explicit stopped-
+slave database reinitialize (dry-run default) preserves damaged files and local
+trust, can resume an interrupted recovery, refuses identifiable master/fenced
+transition, and never invokes GoBGP. Recoverable protection is retained; otherwise
+its original corrupt source is archived and new announcements stay disabled.
+
+New installer creates private TLS state directory; template defaults to pinned,
+node cert/key under writable data path, no CA needed. Existing production config
+remains legacy until an operator explicitly switches mode/paths after backup.
+Runtime requirement cryptography 50.0.2 and hashed runtime/test locks updated.
+Updated master/slave/operations/update/protocol docs, added TLS_TRUST.md and brief
+Info EN/RU/UK guidance; no wire format/protocol-number change.
+
+Verification so far: real two-node HTTPS/mTLS unit cases passed generation,
+permissions/corrupt/partial/mismatched pair, no credentials before approval,
+mutual approval/snapshot/replay, URL/key changes, candidate race, actual-socket
+pin substitution, revoke, guest/admin/CSRF/slave, root CLI without users and with
+corrupt DB, role transitions preserving pin, graceful expiration stop/restart.
+Real CA legacy tool used fixed 0.4.1 source then new code and explicit pinned
+transition; journal/history preserved and original CA keys/certs unchanged.
+Chromium dark/light/mobile and real peer-free GoBGP lab passed UI approval/revoke,
+catch-up and unchanged IPv4/IPv6 RIB/daemon PIDs. Initial mobile overflow and
+asynchronous test waiting were corrected. All artifacts remain ignored under var.
+
+Final verification:
+- 210 discovered tests: 209 passed, one explicit opt-in integration test skipped;
+  ResourceWarning treated as error. var/tls-release-final.log. The 22-case TLS
+  suite additionally passed in isolation (var/tls-release-core.log), including
+  direct one-sided mTLS/token bypass refusal, corrupted local trust never showing
+  In sync, root CLI on an empty slave, periodic context pickup without restart,
+  corrupt-DB recovery interruption/resume and single rotation notification/no replay.
+- Verified legacy rolling path against actual fixed 0.4.1 source and its original
+  installed metadata, then 0.5.0 legacy and explicit pinned transition. Original
+  leaf and CA keys/certificates remain byte-identical, history/journal retained,
+  protocol 3 throughout. var/tls-legacy-verified.log.
+- Chromium dark/light/mobile real HTTPS peer approval/revoke/admin-slave/guest
+  restrictions and automatic catch-up passed; actual peer-free GoBGP IPv4/IPv6 RIB
+  and daemon PIDs unchanged. var/tls-browser-verified.log. Info EN/RU/UK both
+  themes/mobile passed (var/tls-info-verified.log). Browser test trust is scoped
+  only to the temporary test SPKIs, never a production verification bypass.
+- Fresh signed Debian 13 minimal rootfs installation with real apt/Git/hash-locked
+  pip and optional verified GoBGP input passed new cryptography dependencies,
+  0.5.0/protocol-3 metadata, permissions, empty initial data and disabled units,
+  repeat refusal and systemd-analyze static checks. Installed root CLI generated
+  the pair as service UID, 0600, with no users/DB. Then actually installed
+  unprivileged HTTPS started with pair/DB absent, generated both, answered verified
+  HTTPS/SAN session/public intro, using its own peer-free GoBGP. No host systemd
+  lifecycle operation. Logs var/tls-installer-results.log / tls-installed-https.log.
+  This is chroot/namespace process validation, NOT a booted VM/PID1 reboot test.
+- Independent wheel and normalized source-archive builds match. Package includes
+  TLS transport/recovery/CLI/docs and excludes runtime/local deployment files.
+  Normal generated sdist egg-info metadata is allowed only in the package, never
+  Git. Hashed dependency install/pip check, shell syntax/ShellCheck and changed
+  operational Markdown links pass. Staged artifact/privacy checks passed for 39
+  files; pre-commit reachable history scan covered 25 commits / 449 unique blobs
+  with zero findings. No push or tag is authorized.
+
+Design/operational limits: TLS audit is local outside the common replicated audit;
+2 MiB trust/audit capacity requires explicit operator archival rather than deletion.
+CLI approval is picked up within 10 seconds (web immediately). Expiry waits up to
+30 seconds for HTTP requests and for already-running background work, so complete
+HTTPS restart duration depends on current operation timeouts/workload; it does not
+force-kill transactions or control GoBGP. Manual pair replacement requires a
+Hemlock-only restart. Self-signed browser trust is independent of replication pin.
+Recovery retains protection only when readable; otherwise archived corrupt files
+are retained and protection must initialize before announcements are allowed.
+
+No working A/B config/key/DB/service/role/BGP changes, synthetic working audit,
+real notification test, push or tag creation. Next: review this LOCAL release,
+authorize publication separately, then B -> A in explicit legacy_ca with original
+keys, followed by separate operator-selected pinned mode/paths and independent
+approval on both nodes. Keep old keys/backups; check fresh sync/outbox before
+resuming retention or changing announcements. Ordinary updates do not reinstall
+slave or change identities. Final deployment remains outside this task.

@@ -14,6 +14,19 @@
 MIGRATION_LEGACY.md не относится к новой B. Ни fresh installer, ни обычный updater
 не являются скрытой миграцией существующего master.
 
+## TLS-переход 0.5.0 без изменения протокола
+
+Сначала B, затем A, сохраняя cert/key/ca и явно legacy_ca. Старый INI без
+[tls] остаётся legacy; обновление не удаляет production keys. После совместимого
+обновления обоих отдельно настроить pinned с новыми service-owned путями и SAN,
+перезапустить только Hemlock и выполнить independent SPKI approval на обоих.
+Пауза синхронизации ожидаема при разных режимах/до approval, сохранённые данные
+и GoBGP продолжают работать. Протокол 3 и payload-форматы прежние. Обычное
+обновление не требует init-db/reinstall slave. [Полные команды](TLS_TRUST.md).
+Identity/trust нужно резервировать отдельно от SQLite, не переносить CA private
+key. Certificate renewal в pinned mode вызывает краткий HTTPS restart и
+повторное approval нового ключа; GoBGP не трогать.
+
 ## Backup
 
 Backup CLI использует SQLite backup API, не `cp` открытого SQLite:

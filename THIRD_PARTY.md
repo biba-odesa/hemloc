@@ -10,6 +10,9 @@ them. The package manager and source archives provide their complete notices.
 - FastAPI, Starlette, Uvicorn, Pydantic, argon2-cffi and HTTPX: MIT distributions.
 - grpcio / grpcio-tools, protobuf and Playwright have their own upstream notices
   (Apache/BSD families); retain wheel/package notices when redistributing them.
+- cryptography 50.0.2: PyCA, Apache-2.0 OR BSD-3-Clause; retain its wheel
+  notices, including bundled OpenSSL notices. Used for standard X.509/SPKI and
+  ECDSA key/certificate generation; TLS itself uses Python/OpenSSL.
 - bgpq4 is installed as a Debian package with its upstream/Debian copyright file.
 - The Go toolchain and transitive Go modules retain their upstream BSD/other
   licenses. A binary redistribution must include the notices applicable to its

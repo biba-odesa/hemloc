@@ -46,6 +46,12 @@ def confirmed(store,now=None):
     state=store.local('peer_compatibility',{})
     now=time.time() if now is None else now
     local=getattr(store,'replication_protocol_version',REPLICATION_PROTOCOL_VERSION)
+    if getattr(store.config,'tls_mode','legacy_ca')=='pinned':
+        from .tls import Trust,own_info
+        try:pin=Trust(store.config).pin();own=own_info(store.config)
+        except (ValueError,OSError):return False
+        if (not pin or pin['not_after']<=now or own['not_after']<=now or state.get('peer_spki')!=pin['fingerprint']
+                or state.get('own_spki')!=own['fingerprint']):return False
     return (state.get('ok') is True and state.get('local_protocol_version')==local
             and state.get('peer_protocol_version')==local and 0<=now-state.get('at',0)<=LEASE_SECONDS)
 

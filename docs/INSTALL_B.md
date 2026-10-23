@@ -1,8 +1,8 @@
 # Установка slave Hemlock на чистую Debian 13
 
-Самостоятельная инструкция для канонической поставки **0.4.0+**. Все IP/ASN/имена
+Самостоятельная инструкция для канонической поставки **0.5.0+**. Все IP/ASN/имена
 ниже — заполнители/документационные примеры. Существующий master должен поддерживать тот же явный протокол репликации
-(в 0.4.1 — версия 3); версии приложений могут различаться. Старый peer без
+(в 0.5.0 — версия 3); версии приложений могут различаться. Старый peer без
 handshake несовместим. См. [REPLICATION_PROTOCOL.md](REPLICATION_PROTOCOL.md).
 Не меняйте рабочую роль master ради установки slave.
 
@@ -12,12 +12,15 @@ GoBGP готовы, реальные соседи выключены, `announcem
 
 ## Новая B вместо прежней B
 
-Для существующей пары используйте [PAIR_UPGRADE_040.md](PAIR_UPGRADE_040.md).
-Новая B получает только адаптированный локальный INI, собственные TLS-файлы/CA
-и общий secret. Старые БД/cache/cursor/sessions/venv не переносить; все пути
-канонические. Users/rules/audit придут с A через snapshot/journal.
-Раздел 5 описывает локальную инициализацию protection без переноса cache файла.
-На A сохраняются его БД и накопленный protection; GoBGP A не перезапускается.
+Для обычного обновления B не переустанавливается: см. [LIFECYCLE.md](LIFECYCLE.md).
+Если оператор отдельно выбрал чистую переустановку, сохранить старую установку
+для отката; перенести только адаптированные локальные настройки и общий secret.
+Новая pinned-пара B создаётся самим B; старые TLS/CA-файлы остаются в backup,
+а не подменяют новую identity. БД/cache/cursor/sessions/venv не переносить.
+Users/rules/audit придут с A после взаимного approval и snapshot/journal.
+Раздел 5 описывает локальную инициализацию protection без копии master DB.
+На A его БД/protection и GoBGP сохраняются. Исторический сценарий старой
+поставки описан в PAIR_UPGRADE_040.md и не меняет новые TLS defaults.
 
 ## 1. Проверки и исходник
 
@@ -52,7 +55,7 @@ export HTTPS_PROXY="$https_proxy"
 ```bash
 apt-get update
 apt-get install -y --no-install-recommends git ca-certificates nano
-RELEASE='<PUBLISHED_0.4_OR_LATER_TAG_OR_FULL_40_HEX_COMMIT>'
+RELEASE='<PUBLISHED_0.5_OR_LATER_TAG_OR_FULL_40_HEX_COMMIT>'
 git clone https://github.com/biba-odesa/hemlock.git /root/hemlock-source
 cd /root/hemlock-source
 git fetch origin "$RELEASE"
@@ -96,72 +99,20 @@ Node IDs и owner замените согласованными значения
 `hemlock.service` и `gobgp.service`. Ни сервис, ни БД/администратор не запускаются/
 создаются. Existing install/пользователи/конфиги не перезаписываются.
 
-## 3. TLS: ключ slave остаётся на slave, подпись — на master
+## 3. Собственная TLS-пара B, без CA
 
-В этой двухузловой процедуре CA key хранится **на master**. Никогда не переносите
-его на slave. Доверие к существующему CA подтвердите fingerprint по независимому
-каналу. На slave:
+Установщик создал `/var/lib/hemlock/tls` hemlock:hemlock 0700. В конфиге
+оставьте mode=pinned, cert/key под отдельным identity directory. При первом
+старте Hemlock создаст оба файла атомарно, 0600. На B не переносить CA private
+key, ключ/сертификат master или старую production-пару ради новой установки.
+CA/CSR/подписание на A для pinned mode не нужны. Укажите management IP/DNS B
+в tls.names для правильного SAN браузера; wildcard web host требует names.
 
-```bash
-umask 077
-SLAVE_IP=192.0.2.20
-install -d -m 0700 /root/hemlock-transfer
-openssl req -new -newkey rsa:3072 -nodes \
-  -keyout /etc/hemlock/tls/server.key \
-  -out /root/hemlock-transfer/slave.csr -subj '/CN=block-b' \
-  -addext "subjectAltName=IP:$SLAVE_IP"
-test -s /root/hemlock-transfer/slave.csr
-openssl req -in /root/hemlock-transfer/slave.csr -noout -verify
-chown root:hemlock /etc/hemlock/tls/server.key
-chmod 0640 /etc/hemlock/tls/server.key
-```
-
-Через существующий проверенный SSH/SFTP передайте только CSR на master.
-Например, с **рабочей станции**, где значения SSH login@host уже согласованы:
-
-```bash
-umask 077
-SLAVE_SSH='<EXISTING_LOGIN_AT_SLAVE>'
-MASTER_SSH='<EXISTING_LOGIN_AT_MASTER>'
-ssh -T "$SLAVE_SSH" 'sudo -n cat /root/hemlock-transfer/slave.csr' > slave.csr
-test -s slave.csr
-openssl req -in slave.csr -noout -verify
-scp slave.csr "$MASTER_SSH:slave.csr.transfer"
-```
-
-**Master/root:** установите принятый файл в закрытый каталог; сначала проверьте
-непустой файл и подпись CSR, **потом** подписывайте. Укажите фактический путь CA,
-не создавайте новый CA для существующего master:
-
-```bash
-install -d -m 0700 /root/hemlock-transfer
-install -m 0600 /home/OPERATOR/slave.csr.transfer /root/hemlock-transfer/slave.csr
-test -s /root/hemlock-transfer/slave.csr
-openssl req -in /root/hemlock-transfer/slave.csr -noout -verify
-SLAVE_IP=192.0.2.20
-CA_DIR=/root/hemlock-ca
-printf 'subjectAltName=IP:%s\nkeyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n' \
-  "$SLAVE_IP" > /root/hemlock-transfer/slave.ext
-openssl x509 -req -in /root/hemlock-transfer/slave.csr \
-  -CA "$CA_DIR/ca.crt" -CAkey "$CA_DIR/ca.key" -CAcreateserial \
-  -days 365 -sha256 -extfile /root/hemlock-transfer/slave.ext \
-  -out /root/hemlock-transfer/slave.crt
-```
-
-Верните slave.crt и **публичный** ca.crt на slave через проверенный канал,
-установите `/etc/hemlock/tls/server.crt` и `ca.crt` root:hemlock 0640.
-CA private key остаётся на master. На **slave**:
-
-```bash
-openssl verify -CAfile /etc/hemlock/tls/ca.crt /etc/hemlock/tls/server.crt
-openssl x509 -in /etc/hemlock/tls/server.crt -noout -checkip "$SLAVE_IP"
-openssl x509 -in /etc/hemlock/tls/server.crt -pubkey -noout | openssl pkey -pubin -outform DER | sha256sum
-openssl pkey -in /etc/hemlock/tls/server.key -pubout -outform DER | sha256sum
-```
-
-Последние digest одинаковы. SAN должен соответствовать адресу в peer_url.
-Доверие проверяется всегда, без `-k`/verify=False. Срок сертификата контролируйте,
-продлевайте на CA до истечения с повторными CA/SAN/key проверками.
+Если существует только один файл, неверны права или пара повреждена/не совпадает,
+Hemlock сообщает ошибку, не удаляет её молча. По истечении срока HTTPS
+контролируемо перезапускается с новой парой; GoBGP продолжает работу, на A
+понадобится отдельное approval нового B-ключа. Предупреждение за warn_days
+однократное. Подробнее и переход существующей CA-пары: [TLS_TRUST.md](TLS_TRUST.md).
 
 ## 4. Секрет и INI
 
@@ -198,9 +149,16 @@ poll_seconds = 3
 host = 192.0.2.20
 port = 8443
 tls = yes
-cert = /etc/hemlock/tls/server.crt
-key = /etc/hemlock/tls/server.key
-ca = /etc/hemlock/tls/ca.crt
+cert = /var/lib/hemlock/tls/identity/server.crt
+key = /var/lib/hemlock/tls/identity/server.key
+ca =
+
+[tls]
+mode = pinned
+state_dir = /var/lib/hemlock/tls
+names = 192.0.2.20
+days = 365
+warn_days = 30
 [gobgp]
 announcements = no
 grpc_target = 127.0.0.1:50051
@@ -265,20 +223,23 @@ runuser -u gobgp -- /usr/local/bin/gobgpd --dry-run --pprof-disable \
   --api-hosts=127.0.0.1:50051 -f /etc/gobgp/gobgpd.toml
 ```
 
-На **master** заполните peer_url slave, peer_node_id, доверенный CA и тот же token;
+На **master** заполните peer_url slave, peer_node_id и тот же token;
 проверьте права INI и перезапустите только приложение для перечитывания. Не меняйте
-master role/node ID/owner. На **slave**, после полной проверки конфигов/TLS/cache:
+master role/node ID/owner. На **slave**, после проверки конфигов/SAN/protection:
 
 ```bash
 systemctl enable --now gobgp.service hemlock.service
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls self
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls peer
 systemctl is-active gobgp.service hemlock.service
 journalctl -u hemlock.service -n 40 --no-pager
-curl --noproxy '*' --cacert /etc/hemlock/tls/ca.crt \
-  "https://$SLAVE_IP:8443/api/session"
+curl --noproxy '*' --cacert /var/lib/hemlock/tls/identity/server.crt \
+  "https://<YOUR_SLAVE_IP>:8443/api/session"
 ```
 
-Ожидается `{"authenticated":false}`. Войдите прежней учётной записью master после
-синхронизации. В вебе проверьте одинаковые generation/cursor, отставание 0, правила,
+Ожидается `{"authenticated":false}`. Теперь выполните взаимное approval по разделу 9
+ниже. До этого синхронизации и пользователей на пустом B нет. После approval и
+синхронизации войдите прежней учётной записью master. В вебе проверьте одинаковые generation/cursor, отставание 0, правила,
 пользователей, аудит и protection обоих узлов. На slave редактирование отключено,
 включая прямой API. На master сосед должен быть свежим In sync, а не stale.
 Проверьте запрет startup-редактирования без тестовых мутаций в рабочем аудите.
@@ -318,9 +279,32 @@ master не останавливать. Для штатного теста ре�
 комментарий отдельного тестового правила на master, проверить slave и вернуть
 прежний комментарий — это реальные audit events, не скрывать их.
 
-TLS error: проверяйте время, CA, SAN/URL и совпадение ключа. Auth error: одинаковый
+TLS error: проверяйте время, SPKI approval на обоих узлах, SAN веба, режим и пару ключа. CA проверяется только в legacy_ca. Auth error: одинаковый
 secret, peer_node_id и версии обоих узлов. IRR error: TCP/43/sources/timeout,
 включая доступ от сервисного пользователя; HTTP proxy тут не поможет. Permission
 error: root:hemlock 0640 INI/keys и hemlock:hemlock 0600 SQLite. BGP Active либо
 admin-prohibited не означает Established: проверьте реальные ACL/TTL/passive/
 адреса и admin-down. Не исправляйте диагноз отключением TLS/protection.
+
+
+## 9. Взаимное approval после запуска, до первого входа B
+
+На root-консоли B сохраните вывод tls self. На root-консоли A выполните tls peer
+и сравните candidate fingerprint с выводом B по независимому доверенному каналу.
+Аналогично сравните candidate на B с tls self на A. На каждом узле:
+
+```bash
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls approve \
+  --fingerprint 'SHA256:<VERIFIED_OTHER_NODE_SPKI>'
+/opt/hemlock/.venv/bin/hemlock --config /etc/hemlock/hemlock.ini tls trust
+```
+
+Если candidate сменился, обновить tls peer и снова сверить, не подтверждать
+вслепую. Root CLI нужен именно потому, что пустой slave ещё без пользователей.
+После обоих approval дождитесь автоматического snapshot/journal и свежего
+In sync/нулевого отставания. Только затем входите на B существующим пользователем.
+Admin может управлять локальным доверием и на slave с CSRF; guest не может.
+Отзыв: tls revoke --fingerprint 'SHA256:<CURRENT_APPROVED_SPKI>'. Trust/identity
+не входят в SQLite snapshot и не теряются при смене роли/reinitialize.
+Обычные обновления B → A не требуют переустановки slave; старую CA-пару обновляют
+в legacy_ca, затем оба явно переводят в pinned, без автоматического downgrade.

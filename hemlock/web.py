@@ -65,9 +65,12 @@ class Password(Body):
 
 
 def create_app(config, *, adapter=None, background=True, observations=None,
-               replication_protocol_version=None):
+               replication_protocol_version=None, tls_context=None, tls_restart=None, tls_rotation=None):
     @asynccontextmanager
     async def lifespan(app):
+        if config.tls_mode=='pinned':
+            from .tls import ensure_identity,own_info
+            identity=own_info(config) if tls_context else await asyncio.to_thread(ensure_identity,config)
         with process_lock(config.database):
             from .transition import RoleTransition
             startup_adapter = adapter
@@ -110,6 +113,9 @@ def create_app(config, *, adapter=None, background=True, observations=None,
                         (ProtectionWorker(service).step, 60, 'protection'),
                         (Reconciler(service, local_adapter).step, 3, 'bgp'),
                         (lambda: observe_bgp(store, local_adapter), 15, 'observation')]
+                if config.tls_mode=='pinned':
+                    from .tls import Lifecycle
+                    work.append((Lifecycle(config,notifications,tls_restart or (lambda:None),tls_context,tls_rotation or identity.get('rotation_event')).step,10,'tls'))
                 if config.peer_url:
                     work.append((Replicator(store, peer).step, config.poll_seconds, 'replication'))
                 tasks = [asyncio.create_task(repeat(stop, fn, interval, store, name)) for fn, interval, name in work]
@@ -199,6 +205,11 @@ def create_app(config, *, adapter=None, background=True, observations=None,
             response.headers.update(request.state.replication_headers)
         return response
 
+    from .tls import TLSFailure
+    @app.exception_handler(TLSFailure)
+    async def tls_failure(request,exc):
+        return JSONResponse({'error':str(exc),'code':exc.code},status_code=503)
+
     from .protocol import ProtocolFailure
 
     @app.exception_handler(ProtocolFailure)
@@ -241,8 +252,14 @@ def create_app(config, *, adapter=None, background=True, observations=None,
         return actor
 
     def peer_auth(request: Request):
+        if config.tls_mode=='pinned':
+            from .tls import authorize_client
+            authorize_client(config,request.scope.get('extensions',{}).get('hemlock.client_certificate'))
         if not request.app.state.peer.authorized(request.headers.get('authorization'), request.headers.get('x-hemlock-node')):
             raise Forbidden('Peer authentication required')
+        if config.tls_mode=='pinned':
+            from .tls import verify_mutual
+            verify_mutual(config)
 
     def exchange_auth(request: Request):
         peer_auth(request)
@@ -521,6 +538,54 @@ def create_app(config, *, adapter=None, background=True, observations=None,
         hashed = password_hash(body.password) if body.password else None
         result = app.state.service.save_user(actor, login, role=body.role, enabled=body.enabled, password_hash=hashed)
         return {'status': 'saved', 'user': redact(result)}
+
+    @app.get('/tls/introduction')
+    def tls_introduction(request: Request):
+        if config.tls_mode!='pinned':
+            raise Invalid('Public TLS introduction requires pinned mode')
+        from .tls import introduction
+        return introduction(config)
+
+    def local_tls_admin(actor):
+        if actor.role!='admin':raise Forbidden('Administrator required for local TLS trust')
+        if config.tls_mode!='pinned':raise Invalid('Local approval requires pinned TLS mode')
+
+    @app.get('/api/tls')
+    def tls_status(actor=Depends(current)):
+        if config.tls_mode!='pinned':return {'mode':config.tls_mode}
+        from .tls import Trust,own_info
+        result={'own':own_info(config),**Trust(config).status()}
+        if actor.role!='admin':result.pop('events',None)
+        return result
+
+    @app.post('/api/tls/discover')
+    def tls_discover(actor=Depends(mutation)):
+        local_tls_admin(actor)
+        from .tls import Trust
+        return Trust(config).discover()
+
+    class PeerFingerprint(Body):
+        fingerprint: str = Field(min_length=1,max_length=128)
+
+    @app.post('/api/tls/approve')
+    def tls_approve(body: PeerFingerprint,actor=Depends(mutation)):
+        local_tls_admin(actor)
+        from .tls import Trust,refresh_context
+        result=Trust(config).approve(body.fingerprint,actor.login)
+        if tls_context:refresh_context(config,tls_context)
+        app.state.store.set_local('peer_compatibility',{'ok':False,'code':'peer_approval_required','at':time.time()})
+        previous=app.state.store.local('sync',{})
+        app.state.store.set_local('sync',{'ok':False,'at':time.time(),'error':'Waiting for mutually approved peer','last_success':previous.get('last_success')})
+        return result
+
+    @app.post('/api/tls/revoke')
+    def tls_revoke(body: PeerFingerprint,actor=Depends(mutation)):
+        local_tls_admin(actor)
+        from .tls import Trust
+        result=Trust(config).revoke(body.fingerprint,actor.login)
+        app.state.store.set_local('peer_compatibility',{'ok':False,'code':'peer_approval_required','at':time.time()})
+        app.state.store.set_local('sync',{'ok':False,'at':time.time(),'code':'peer_approval_required','error':'Peer approval required'})
+        return result
 
     @app.get('/replication/handshake', dependencies=[Depends(peer_auth)])
     def handshake(request: Request):

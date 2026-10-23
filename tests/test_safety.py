@@ -40,9 +40,10 @@ class SafetyTests(unittest.TestCase):
             pass
 
     def test_example_config_and_family_settings(self):
-        with self.assertRaises(Invalid):load('deploy/hemlock.example.ini')
+        fresh=load('deploy/hemlock.example.ini')
+        self.assertEqual(fresh.tls_mode,'pinned');self.assertTrue(fresh.tls)
         example=Path(self.tmp.name)/'example.ini'
-        example.write_text(Path('deploy/hemlock.example.ini').read_text().replace('tls = yes','tls = no'))
+        example.write_text(Path('deploy/hemlock.example.ini').read_text().replace('tls = yes','tls = no').replace('mode = pinned','mode = legacy_ca'))
         cfg = load(str(example))
         self.assertFalse(cfg.announcements)
         self.assertFalse(cfg.tls)

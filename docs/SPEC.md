@@ -82,3 +82,20 @@ never count as logins. Guest history privacy applies to all history/audit APIs.
 On slave password changes remain prohibited; current password is required on
 master. Peer history freshness must never be asserted beyond received events.
 Exact constraints: [ACCOUNTS_UI.md](ACCOUNTS_UI.md).
+
+
+## TLS trust extension (application 0.5.0, replication protocol 3 unchanged)
+
+New installations select pinned node-owned self-signed TLS and explicit independent
+SHA256 SPKI approval on both peers; existing INI stays legacy_ca until an explicit
+operator transition. Public introduction is separate from authenticated protocol
+handshake. No token or private data precedes actual-socket pin verification.
+Replication endpoints require mTLS plus both approvals, existing token/node ID
+and protocol gate. No proxy/redirect or automatic CA downgrade. Local trust/audit
+and keypair stay outside SQLite and all replicated formats. Admin/CSRF local
+approval works on both roles; root CLI works without users or a healthy DB.
+Atomic private generation, strict malformed/partial/permission refusal, expiry
+warning and controlled HTTPS-only rotation are specified in TLS_TRUST.md. TLS
+failures never reset data or change roles; stopped-slave reinitialization is a
+separate explicit backup-preserving, resumable operation. GoBGP is not controlled
+by TLS. Retention cannot use stale/revoked local trust readiness.

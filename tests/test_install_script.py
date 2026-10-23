@@ -87,7 +87,8 @@ class InstallerTests(unittest.TestCase):
         for value in ('role = master','node_id = fixture-a','owner = 64512,100,1','announcements = no','next_hop =\n','protected_asns = \n','tls = yes'):
             self.assertIn(value,config)
         self.assertEqual((self.fake/'etc/hemlock/hemlock.ini').stat().st_mode&0o777,0o640)
-        self.assertEqual(list((self.fake/'var/lib/hemlock').iterdir()),[])
+        self.assertEqual([p.name for p in (self.fake/'var/lib/hemlock').iterdir()],['tls'])
+        self.assertEqual((self.fake/'var/lib/hemlock/tls').stat().st_mode&0o777,0o700)
         self.assertFalse((self.fake/'etc/hemlock/replication.token').exists())
         self.assertFalse((self.fake/'etc/gobgp/gobgpd.toml').exists())
         self.assertIn('No services enabled or started',result.stdout)

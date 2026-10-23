@@ -67,7 +67,7 @@ def main():
                 if number==1:artifacts.append(artifact)
         with tarfile.open(next((out/'python-1').glob('*.tar.gz'))) as archive:
             names=archive.getnames()
-            required=['requirements.lock','requirements-test.lock','requirements-build.lock','deploy/hemlock.service','deploy/gobgp.service','deploy/hemlock.example.ini','deploy/patches/gobgp-4.10.0-ibgp-ttl.patch','docs/OPERATIONS.md','tools/build_release.py','deploy/install-debian13.sh','deploy/build-gobgp.sh','update.sh','docs/DEPLOYMENT.md','docs/INSTALL_B.md','docs/LIFECYCLE.md','docs/MIGRATION_LEGACY.md','tools/protection_transfer.py']
+            required=['requirements.lock','requirements-test.lock','requirements-build.lock','deploy/hemlock.service','deploy/gobgp.service','deploy/hemlock.example.ini','deploy/patches/gobgp-4.10.0-ibgp-ttl.patch','docs/OPERATIONS.md','tools/build_release.py','deploy/install-debian13.sh','deploy/build-gobgp.sh','update.sh','docs/DEPLOYMENT.md','docs/INSTALL_B.md','docs/LIFECYCLE.md','docs/MIGRATION_LEGACY.md','tools/protection_transfer.py','hemlock/tls.py','hemlock/tls_runtime.py','hemlock/recovery.py','docs/TLS_TRUST.md']
             for name in required:
                 if not any(p.endswith('/'+name) for p in names):raise RuntimeError('Missing from sdist: '+name)
         if bool(args.gobgp_source)!=bool(args.go_archive):raise SystemExit('Supply both verified source and Go toolchain archives')
