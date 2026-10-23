@@ -1060,3 +1060,33 @@ keys, followed by separate operator-selected pinned mode/paths and independent
 approval on both nodes. Keep old keys/backups; check fresh sync/outbox before
 resuming retention or changing announcements. Ordinary updates do not reinstall
 slave or change identities. Final deployment remains outside this task.
+
+## Operator-authorized first pinned-TLS deployment
+
+Operator explicitly authorized publication of 4eb4c33 and updating the existing
+master into pinned mode, accepting the temporary replication pause. Ordinary
+push to origin/main completed, no tag change. Prepared private INI/unit/old-pair/
+venv rollback archives and a stopped-application SQLite backup. Installed 0.5.0
+from that fixed commit, changed only TLS options, created a service-owned private
+state directory and retired the former active leaf pair into the private rollback
+bundle. It is absent from its original paths; no irreversible key destruction.
+CA signing material was not modified. Existing service/account/install/DB paths,
+node identities, role, ownership marker, route/protection and notification/
+retention policy settings were preserved.
+
+Restarted only the application. Service generated its node-owned pair with correct
+UID/mode 0600 and exposed verified HTTPS/SAN and bounded public introduction.
+Read-only post-checks confirmed original non-audit documents/protection/history/
+existing audit, SQLite integrity, byte-identical observed GoBGP RIB and unchanged
+daemon PID plus peer establishment timestamps. No pin approval or false human
+login was performed. No GoBGP lifecycle/configuration operation or remote SSH.
+Detailed deployment identity, fingerprints, addresses, original config/keys and
+rollback paths remain outside Git in private local deployment records.
+
+The peer remains on its prior TLS configuration until the operator updates it;
+replication is intentionally paused. Next operator step: run the canonical updater
+on the slave, then explicitly select pinned mode and new service-owned pair paths,
+retire its old leaf pair after backup, restart only its application and compare/
+approve exact SPKI fingerprints independently on both consoles/web interfaces.
+Removing old CA-mode files without changing mode/paths would prevent HTTPS startup.
+Keep rollback material and verify fresh catch-up/outbox after mutual approval.
